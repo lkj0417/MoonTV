@@ -34,10 +34,91 @@ export function getImageProxyUrl(): string | null {
 export function processImageUrl(originalUrl: string): string {
   if (!originalUrl) return originalUrl;
 
-  const proxyUrl = getImageProxyUrl();
-  if (!proxyUrl) return originalUrl;
+  // 仅处理豆瓣图片代理
+  if (!originalUrl.includes('doubanio.com') && !originalUrl.includes('douban.com')) {
+    const proxyUrl = getImageProxyUrl();
+    if (!proxyUrl) return originalUrl;
+    return `${proxyUrl}${encodeURIComponent(originalUrl)}`;
+  }
 
-  return `${proxyUrl}${encodeURIComponent(originalUrl)}`;
+  // 豆瓣图片使用专门的代理配置
+  const { proxyType, proxyUrl } = getDoubanImageProxyConfig();
+  switch (proxyType) {
+    case 'direct':
+      return `/api/image-proxy?url=${encodeURIComponent(originalUrl)}`;
+    case 'cmliussss-cdn-tencent':
+      return originalUrl.replace(
+        /img\d+\.doubanio\.com/g,
+        'img.doubanio.cmliussss.net'
+      );
+    case 'cmliussss-cdn-ali':
+      return originalUrl.replace(
+        /img\d+\.doubanio\.com/g,
+        'img.doubanio.cmliussss.com'
+      );
+    case 'cors-anywhere':
+      return `https://cors-anywhere.com/${originalUrl}`;
+    case 'cors-proxy-zwei':
+      return `https://ciao-cors.is-an.org/${encodeURIComponent(originalUrl)}`;
+    case 'custom':
+      return `${proxyUrl}${encodeURIComponent(originalUrl)}`;
+    default:
+      return `/api/image-proxy?url=${encodeURIComponent(originalUrl)}`;
+  }
+}
+
+/**
+ * 获取豆瓣代理配置
+ */
+export function getDoubanProxyConfig(): {
+  proxyType:
+    | 'direct'
+    | 'cors-proxy-zwei'
+    | 'cmliussss-cdn-tencent'
+    | 'cmliussss-cdn-ali'
+    | 'cors-anywhere'
+    | 'custom';
+  proxyUrl: string;
+} {
+  const doubanProxyType =
+    localStorage.getItem('doubanDataSource') ||
+    (window as any).RUNTIME_CONFIG?.DOUBAN_PROXY_TYPE ||
+    'cmliussss-cdn-tencent';
+  const doubanProxy =
+    localStorage.getItem('doubanProxyUrl') ||
+    (window as any).RUNTIME_CONFIG?.DOUBAN_PROXY ||
+    '';
+  return {
+    proxyType: doubanProxyType,
+    proxyUrl: doubanProxy,
+  };
+}
+
+/**
+ * 获取豆瓣图片代理配置
+ */
+export function getDoubanImageProxyConfig(): {
+  proxyType:
+    | 'direct'
+    | 'cors-proxy-zwei'
+    | 'cmliussss-cdn-tencent'
+    | 'cmliussss-cdn-ali'
+    | 'cors-anywhere'
+    | 'custom';
+  proxyUrl: string;
+} {
+  const doubanImageProxyType =
+    localStorage.getItem('doubanImageDataSource') ||
+    (window as any).RUNTIME_CONFIG?.DOUBAN_IMAGE_PROXY_TYPE ||
+    'cmliussss-cdn-tencent';
+  const doubanImageProxy =
+    localStorage.getItem('doubanImageProxyUrl') ||
+    (window as any).RUNTIME_CONFIG?.DOUBAN_IMAGE_PROXY ||
+    '';
+  return {
+    proxyType: doubanImageProxyType,
+    proxyUrl: doubanImageProxy,
+  };
 }
 
 /**

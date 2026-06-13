@@ -57,8 +57,11 @@ interface SiteConfig {
   Announcement: string;
   SearchDownstreamMaxPage: number;
   SiteInterfaceCacheTime: number;
-  ImageProxy: string;
+  DoubanProxyType: string;
   DoubanProxy: string;
+  DoubanImageProxyType: string;
+  DoubanImageProxy: string;
+  ImageProxy: string;
   DisableYellowFilter: boolean;
 }
 
@@ -1355,8 +1358,11 @@ const SiteConfigComponent = ({ config }: { config: AdminConfig | null }) => {
     Announcement: '',
     SearchDownstreamMaxPage: 1,
     SiteInterfaceCacheTime: 7200,
-    ImageProxy: '',
+    DoubanProxyType: 'cmliussss-cdn-tencent',
     DoubanProxy: '',
+    DoubanImageProxyType: 'cmliussss-cdn-tencent',
+    DoubanImageProxy: '',
+    ImageProxy: '',
     DisableYellowFilter: false,
   });
   // 保存状态
@@ -1374,8 +1380,11 @@ const SiteConfigComponent = ({ config }: { config: AdminConfig | null }) => {
     if (config?.SiteConfig) {
       setSiteSettings({
         ...config.SiteConfig,
-        ImageProxy: config.SiteConfig.ImageProxy || '',
+        DoubanProxyType: config.SiteConfig.DoubanProxyType || 'cmliussss-cdn-tencent',
         DoubanProxy: config.SiteConfig.DoubanProxy || '',
+        DoubanImageProxyType: config.SiteConfig.DoubanImageProxyType || 'cmliussss-cdn-tencent',
+        DoubanImageProxy: config.SiteConfig.DoubanImageProxy || '',
+        ImageProxy: config.SiteConfig.ImageProxy || '',
         DisableYellowFilter: config.SiteConfig.DisableYellowFilter || false,
       });
     }
