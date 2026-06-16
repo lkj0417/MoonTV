@@ -38,10 +38,13 @@ importers:
       artplayer:
         specifier: ^5.2.3
         version: 5.2.3
-      clsx:
-        specifier: ^2.0.0
-        version: 2.1.1
-      framer-motion:
+       clsx:
+         specifier: ^2.0.0
+         version: 2.1.1
+       crypto-js:
+         specifier: ^4.1.0
+         version: 4.1.0
+       framer-motion:
         specifier: ^12.18.1
         version: 12.18.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       hls.js:
@@ -105,10 +108,13 @@ importers:
       '@testing-library/jest-dom':
         specifier: ^5.17.0
         version: 5.17.0
-      '@testing-library/react':
-        specifier: ^15.0.7
-        version: 15.0.7(@types/react@18.3.23)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@types/node':
+       '@testing-library/react':
+         specifier: ^15.0.7
+         version: 15.0.7(@types/react@18.3.23)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+       '@types/crypto-js':
+         specifier: ^4.1.1
+         version: 4.1.1
+       '@types/node':
         specifier: 24.0.3
         version: 24.0.3
       '@types/react':
@@ -1856,6 +1862,9 @@ packages:
   '@types/babel__traverse@7.20.7':
     resolution: {integrity: sha512-dkO5fhS7+/oos4ciWxyEyjWe48zmG6wbCheo/G2ZnHx4fs3EU6YC6UM8rk56gAjNJ9P3MTH2jo5jb92/K6wbng==}
 
+  '@types/crypto-js@4.1.1':
+    resolution: {integrity: sha512-BG7fOpTUVk5cs2zTGD+7BYkwR6FSMd2np4TVxamrit4E+z9SasstMnvmxW/1ZxWBcPNwokNMC4OR0yB8+8wL5w==}
+
   '@types/eslint-scope@3.7.7':
     resolution: {integrity: sha512-MzMFlSLBqNF2gcHWO0G1vP/YQyfvrxZ0bF+u7mzUdZ1/xK4A4sru+nraZz5i3iEIk1l1uyicaDVTB4QbbEkAYg==}
 
@@ -2712,6 +2721,9 @@ packages:
   clsx@2.1.1:
     resolution: {integrity: sha512-eYm0QWBtUrBWZWG0d386OGAw16Z995PiOVo2B7bjWSbHedGl5e0ZWaq65kOGgUSNesEIDkB9ISbTg/JK9dhCZA==}
     engines: {node: '>=6'}
+
+  crypto-js@4.1.0:
+    resolution: {integrity: sha512-8l3/9tgWr70WN/XBwPEfM5lWqNlnvhTy/5fh+YFNEd/fzVtzPEVn2J7v0NNrLEiMjHBhPLqgZb7DHlH5U8CJOg==}
 
   cluster-key-slot@1.1.2:
     resolution: {integrity: sha512-RMr0FhtfXemyinomL4hrWcYJxmX6deFdCxpJzhDttxgO1+bcCnkk+9drydLVDmAMG7NE6aN/fl4F7ucU/90gAA==}
@@ -9283,6 +9295,8 @@ snapshots:
       wrap-ansi: 7.0.0
 
   clsx@2.1.1: {}
+
+  crypto-js@4.1.0: {}
 
   cluster-key-slot@1.1.2: {}
 
