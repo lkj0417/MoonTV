@@ -23,43 +23,43 @@ importers:
       '@dnd-kit/utilities':
         specifier: ^3.2.2
         version: 3.2.2(react@18.3.1)
-       '@headlessui/react':
-         specifier: ^2.2.4
-         version: 2.2.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-       '@heroicons/react':
-         specifier: ^2.2.0
-         version: 2.2.0(react@18.3.1)
-       '@upstash/redis':
-         specifier: ^1.25.0
-         version: 1.35.1
-       '@vidstack/react':
-         specifier: ^1.12.13
-         version: 1.12.13(@types/react@18.3.23)(react@18.3.1)
-       artplayer:
-         specifier: ^5.2.3
-         version: 5.2.3
-       clsx:
-         specifier: ^2.0.0
-         version: 2.1.1
-       crypto-js:
-         specifier: ^4.1.0
-         version: 4.1.0
-       framer-motion:
-         specifier: ^12.18.1
-         version: 12.18.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-       hls.js:
-         specifier: ^1.6.6
-         version: 1.6.6
-       lucide-react:
-         specifier: ^0.438.0
-         version: 0.438.0(react@18.3.1)
-       media-icons:
-         specifier: ^1.1.5
-         version: 1.1.5
-       next:
-         specifier: ^14.2.23
-         version: 14.2.30(@babel/core@7.27.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-       next-pwa:
+      '@headlessui/react':
+        specifier: ^2.2.4
+        version: 2.2.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@heroicons/react':
+        specifier: ^2.2.0
+        version: 2.2.0(react@18.3.1)
+      '@upstash/redis':
+        specifier: ^1.25.0
+        version: 1.35.1
+      '@vidstack/react':
+        specifier: ^1.12.13
+        version: 1.12.13(@types/react@18.3.23)(react@18.3.1)
+      artplayer:
+        specifier: ^5.2.3
+        version: 5.2.3
+      clsx:
+        specifier: ^2.0.0
+        version: 2.1.1
+      crypto-js:
+        specifier: ^4.1.0
+        version: 4.1.0
+      framer-motion:
+        specifier: ^12.18.1
+        version: 12.18.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      hls.js:
+        specifier: ^1.6.6
+        version: 1.6.6
+      lucide-react:
+        specifier: ^0.438.0
+        version: 0.438.0(react@18.3.1)
+      media-icons:
+        specifier: ^1.1.5
+        version: 1.1.5
+      next:
+        specifier: ^14.2.23
+        version: 14.2.30(@babel/core@7.27.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      next-pwa:
         specifier: ^5.6.0
         version: 5.6.0(@babel/core@7.27.4)(@types/babel__core@7.20.5)(next@14.2.30(@babel/core@7.27.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(webpack@5.99.9)
       next-themes:
@@ -102,12 +102,12 @@ importers:
       '@svgr/webpack':
         specifier: ^8.1.0
         version: 8.1.0(typescript@4.9.5)
-      '@tailwindcss/forms':
-        specifier: ^0.5.10
-        version: 0.5.10(tailwindcss@3.4.17(ts-node@10.9.2(@types/node@24.0.3)(typescript@4.9.5)))
-      '@testing-library/jest-dom':
-        specifier: ^5.17.0
-        version: 5.17.0
+       '@tailwindcss/forms':
+         specifier: ^0.5.10
+         version: 0.5.10(tailwindcss@3.4.17(ts-node@10.9.2(@types/node@24.0.3)(typescript@4.9.5)))
+       '@testing-library/jest-dom':
+         specifier: ^5.17.0
+         version: 5.17.0
        '@testing-library/react':
          specifier: ^15.0.7
          version: 15.0.7(@types/react@18.3.23)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -115,15 +115,15 @@ importers:
          specifier: ^4.1.1
          version: 4.1.1
        '@types/node':
-        specifier: 24.0.3
-        version: 24.0.3
-      '@types/react':
-        specifier: ^18.3.18
-        version: 18.3.23
-      '@types/react-dom':
-        specifier: ^19.1.6
-        version: 19.1.6(@types/react@18.3.23)
-      '@types/testing-library__jest-dom':
+         specifier: 24.0.3
+         version: 24.0.3
+       '@types/react':
+         specifier: ^18.3.18
+         version: 18.3.23
+       '@types/react-dom':
+         specifier: ^19.1.6
+         version: 19.1.6(@types/react@18.3.23)
+       '@types/testing-library__jest-dom':
         specifier: ^5.14.9
         version: 5.14.9
       '@typescript-eslint/eslint-plugin':
