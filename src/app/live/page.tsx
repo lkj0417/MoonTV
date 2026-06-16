@@ -159,7 +159,7 @@ function LivePageClient() {
     setIsRefreshing(true);
     try {
       // 清除缓存
-      const { deleteCachedLiveChannels } = await import('@/lib/live');
+      const { deleteCachedLiveChannels } = await import('../../lib/live');
       deleteCachedLiveChannels(currentSource.key);
       await loadChannels(currentSource);
     } finally {
