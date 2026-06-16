@@ -8298,6 +8298,8 @@ snapshots:
     dependencies:
       '@babel/types': 7.27.6
 
+  '@types/crypto-js@4.1.1': {}
+
   '@types/eslint-scope@3.7.7':
     dependencies:
       '@types/eslint': 9.6.1
