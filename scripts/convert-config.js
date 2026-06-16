@@ -12,14 +12,7 @@ const projectRoot = path.resolve(__dirname, '..');
 // Paths
 const configPath = path.join(projectRoot, 'config.json');
 const libDir = path.join(projectRoot, 'src', 'lib');
-const oldRuntimePath = path.join(libDir, 'runtime.ts');
-const newRuntimePath = path.join(libDir, 'runtime.ts');
-
-// Delete the old runtime.ts file if it exists
-if (fs.existsSync(oldRuntimePath)) {
-  fs.unlinkSync(oldRuntimePath);
-  console.log('旧的 runtime.ts 已删除');
-}
+const runtimePath = path.join(libDir, 'runtime.ts');
 
 // Read and parse config.json
 let rawConfig;
@@ -53,7 +46,7 @@ if (!fs.existsSync(libDir)) {
 
 // Write to runtime.ts
 try {
-  fs.writeFileSync(newRuntimePath, tsContent, 'utf8');
+  fs.writeFileSync(runtimePath, tsContent, 'utf8');
   console.log('已生成 src/lib/runtime.ts');
 } catch (err) {
   console.error('写入 runtime.ts 失败:', err);

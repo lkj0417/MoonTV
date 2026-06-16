@@ -20,6 +20,7 @@ export async function searchFromApi(
   query: string
 ): Promise<SearchResult[]> {
   try {
+    const config = await getConfig();
     const apiBaseUrl = apiSite.api;
     const apiUrl =
       apiBaseUrl + API_CONFIG.search.path + encodeURIComponent(query);
@@ -30,7 +31,7 @@ export async function searchFromApi(
     const timeoutId = setTimeout(() => controller.abort(), 8000);
 
     const response = await fetch(apiUrl, {
-      headers: API_CONFIG.search.headers,
+      headers: { ...API_CONFIG.search.headers, 'User-Agent': config.SiteConfig.UserAgent || '' },
       signal: controller.signal,
     });
 
@@ -90,7 +91,6 @@ export async function searchFromApi(
       };
     });
 
-    const config = await getConfig();
     const MAX_SEARCH_PAGES: number = config.SiteConfig.SearchDownstreamMaxPage;
 
     // 获取总页数
@@ -118,7 +118,7 @@ export async function searchFromApi(
             );
 
             const pageResponse = await fetch(pageUrl, {
-              headers: API_CONFIG.search.headers,
+              headers: { ...API_CONFIG.search.headers, 'User-Agent': config.SiteConfig.UserAgent || '' },
               signal: pageController.signal,
             });
 
@@ -197,14 +197,14 @@ export async function getDetailFromApi(
   if (apiSite.detail) {
     return handleSpecialSourceDetail(id, apiSite);
   }
-
+  const config = await getConfig();
   const detailUrl = `${apiSite.api}${API_CONFIG.detail.path}${id}`;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 10000);
 
   const response = await fetch(detailUrl, {
-    headers: API_CONFIG.detail.headers,
+    headers: { ...API_CONFIG.detail.headers, 'User-Agent': config.SiteConfig.UserAgent || '' },
     signal: controller.signal,
   });
 
@@ -273,13 +273,14 @@ async function handleSpecialSourceDetail(
   id: string,
   apiSite: ApiSite
 ): Promise<SearchResult> {
+  const config = await getConfig();
   const detailUrl = `${apiSite.detail}/index.php/vod/detail/id/${id}.html`;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 10000);
 
   const response = await fetch(detailUrl, {
-    headers: API_CONFIG.detail.headers,
+    headers: { ...API_CONFIG.detail.headers, 'User-Agent': config.SiteConfig.UserAgent || '' },
     signal: controller.signal,
   });
 

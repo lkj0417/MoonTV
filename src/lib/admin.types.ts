@@ -1,3 +1,20 @@
+export interface Source {
+  key: string;
+  name: string;
+  api: string;
+  detail?: string;
+  from: 'config' | 'custom';
+  disabled?: boolean;
+}
+
+export interface CustomCategory {
+  name?: string;
+  type: 'movie' | 'tv';
+  query: string;
+  from: 'config' | 'custom';
+  disabled?: boolean;
+}
+
 export interface AdminConfig {
   SiteConfig: {
     SiteName: string;
@@ -11,6 +28,7 @@ export interface AdminConfig {
     ImageProxy: string;
     DisableYellowFilter: boolean;
     EnableWebLive?: boolean;
+    UserAgent?: string;
   };
   UserConfig: {
     AllowRegister: boolean;
@@ -20,30 +38,14 @@ export interface AdminConfig {
       banned?: boolean;
     }[];
   };
-  SourceConfig: {
-    key: string;
-    name: string;
-    api: string;
-    detail?: string;
-    from: 'config' | 'custom';
-    disabled?: boolean;
-  }[];
-  CustomCategories: {
-    name?: string;
-    type: 'movie' | 'tv';
-    query: string;
-    from: 'config' | 'custom';
-    disabled?: boolean;
-  }[];
-  // 配置订阅
+  SourceConfig: Source[];
+  CustomCategories: CustomCategory[];
   ConfigSubscribtion?: {
     URL: string;
     AutoUpdate: boolean;
     LastCheck?: string;
   };
-  // 配置文件内容
   ConfigFile?: string;
-  // 直播配置
   LiveConfig?: {
     key: string;
     name: string;
