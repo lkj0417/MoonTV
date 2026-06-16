@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 获取当前配置中的直播源信息
-    const { getConfig } = await import('@/lib/config');
+    const { getConfig } = await import('../../../../lib/config');
     const config = await getConfig();
 
     const liveInfo = config.LiveConfig?.find(live => live.key === key);
