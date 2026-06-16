@@ -36,6 +36,9 @@ import Swal from 'sweetalert2';
 import { AdminConfig, AdminConfigResult } from '@/lib/admin.types';
 import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
 
+import DataMigration from '@/components/DataMigration';
+import ConfigSubscription from '@/components/ConfigSubscription';
+import LiveSourceConfig from '@/components/LiveSourceConfig';
 import PageLayout from '@/components/PageLayout';
 
 // 统一弹窗方法（必须在首次使用前定义）
@@ -1705,6 +1708,9 @@ function AdminPageClient() {
     videoSource: false,
     siteConfig: false,
     categoryConfig: false,
+    dataMigration: true,
+    configSubscription: false,
+    liveSource: true,
   });
 
   // 获取管理员配置
@@ -1875,6 +1881,50 @@ function AdminPageClient() {
               onToggle={() => toggleTab('categoryConfig')}
             >
               <CategoryConfig config={config} refreshConfig={fetchConfig} />
+            </CollapsibleTab>
+
+            {/* 数据迁移标签 */}
+            <CollapsibleTab
+              title='数据迁移'
+              icon={
+                <Settings
+                  size={20}
+                  className='text-gray-600 dark:text-gray-400'
+                />
+              }
+              isExpanded={expandedTabs.dataMigration}
+              onToggle={() => toggleTab('dataMigration')}
+            >
+              <DataMigration onRefreshConfig={fetchConfig} />
+            </CollapsibleTab>
+
+            {/* 配置订阅标签 */}
+            <CollapsibleTab
+              title='配置订阅'
+              icon={
+                <Settings
+                  size={20}
+                  className='text-gray-600 dark:text-gray-400'
+                />
+              }
+              isExpanded={expandedTabs.configSubscription}
+              onToggle={() => toggleTab('configSubscription')}
+            >
+              <ConfigSubscription config={config} refreshConfig={fetchConfig} />
+            </CollapsibleTab>
+
+            {/* 直播源配置标签 */}
+            <CollapsibleTab
+              title='直播源配置'
+              icon={
+                <Video size={20}
+                  className='text-gray-600 dark:text-gray-400'
+                />
+              }
+              isExpanded={expandedTabs.liveSource}
+              onToggle={() => toggleTab('liveSource')}
+            >
+              <LiveSourceConfig config={config} refreshConfig={fetchConfig} />
             </CollapsibleTab>
           </div>
         </div>

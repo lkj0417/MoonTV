@@ -513,3 +513,44 @@ export async function getAvailableApiSites(): Promise<ApiSite[]> {
     detail: s.detail,
   }));
 }
+
+// 设置缓存配置（用于导入数据后更新缓存）
+export function setCachedConfig(config: AdminConfig): void {
+  cachedConfig = config;
+}
+
+// 配置自检函数（用于导入数据时补全缺失字段）
+export function configSelfCheck(config: AdminConfig): AdminConfig {
+  // 确保必要的字段存在
+  if (!config.SiteConfig) {
+    config.SiteConfig = {
+      SiteName: process.env.SITE_NAME || 'MoonTV',
+      Announcement: process.env.ANNOUNCEMENT || '',
+      SearchDownstreamMaxPage: Number(process.env.NEXT_PUBLIC_SEARCH_MAX_PAGE) || 5,
+      SiteInterfaceCacheTime: 7200,
+      DoubanProxyType: process.env.NEXT_PUBLIC_DOUBAN_PROXY_TYPE || 'cmliussss-cdn-tencent',
+      DoubanProxy: process.env.NEXT_PUBLIC_DOUBAN_PROXY || '',
+      DoubanImageProxyType: process.env.NEXT_PUBLIC_DOUBAN_IMAGE_PROXY_TYPE || 'cmliussss-cdn-tencent',
+      DoubanImageProxy: process.env.NEXT_PUBLIC_DOUBAN_IMAGE_PROXY || '',
+      ImageProxy: process.env.NEXT_PUBLIC_IMAGE_PROXY || '',
+      DisableYellowFilter: process.env.NEXT_PUBLIC_DISABLE_YELLOW_FILTER === 'true',
+    };
+  }
+
+  if (!config.UserConfig) {
+    config.UserConfig = {
+      AllowRegister: process.env.NEXT_PUBLIC_ENABLE_REGISTER === 'true',
+      Users: [],
+    };
+  }
+
+  if (!config.SourceConfig) {
+    config.SourceConfig = [];
+  }
+
+  if (!config.CustomCategories) {
+    config.CustomCategories = [];
+  }
+
+  return config;
+}

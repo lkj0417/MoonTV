@@ -42,6 +42,7 @@ function DoubanPageClient() {
     if (type === 'movie') return '全部';
     if (type === 'tv') return 'tv';
     if (type === 'show') return 'show';
+    if (type === 'anime') return 'anime';
     return '全部';
   });
 
@@ -105,6 +106,9 @@ function DoubanPageClient() {
       } else if (type === 'show') {
         setPrimarySelection('');
         setSecondarySelection('show');
+      } else if (type === 'anime') {
+        setPrimarySelection('');
+        setSecondarySelection('anime');
       } else {
         setPrimarySelection('');
         setSecondarySelection('全部');
@@ -125,8 +129,8 @@ function DoubanPageClient() {
   // 生成API请求参数的辅助函数
   const getRequestParams = useCallback(
     (pageStart: number) => {
-      // 当type为tv或show时，kind统一为'tv'，category使用type本身
-      if (type === 'tv' || type === 'show') {
+      // 当type为tv、show或anime时，kind统一为'tv'，category使用type本身
+      if (type === 'tv' || type === 'show' || type === 'anime') {
         return {
           kind: 'tv' as const,
           category: type,
@@ -362,6 +366,8 @@ function DoubanPageClient() {
       ? '电视剧'
       : type === 'show'
       ? '综艺'
+      : type === 'anime'
+      ? '动漫'
       : '自定义';
   };
 
@@ -393,7 +399,7 @@ function DoubanPageClient() {
           {type !== 'custom' ? (
             <div className='bg-white/60 dark:bg-gray-800/40 rounded-2xl p-4 sm:p-6 border border-gray-200/30 dark:border-gray-700/30 backdrop-blur-sm'>
               <DoubanSelector
-                type={type as 'movie' | 'tv' | 'show'}
+                type={type as 'movie' | 'tv' | 'show' | 'anime'}
                 primarySelection={primarySelection}
                 secondarySelection={secondarySelection}
                 onPrimaryChange={handlePrimaryChange}
@@ -430,7 +436,7 @@ function DoubanPageClient() {
                       douban_id={item.id}
                       rate={item.rate}
                       year={item.year}
-                      type={type === 'movie' ? 'movie' : ''} // 电影类型严格控制，tv 不控
+                      type={type === 'movie' || type === 'anime' ? 'movie' : ''} // 电影和动漫类型严格控制，tv 和 show 不控
                     />
                   </div>
                 ))}

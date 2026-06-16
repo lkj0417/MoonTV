@@ -10,6 +10,7 @@ export interface AdminConfig {
     DoubanImageProxy: string;
     ImageProxy: string;
     DisableYellowFilter: boolean;
+    EnableWebLive?: boolean;
   };
   UserConfig: {
     AllowRegister: boolean;
@@ -32,6 +33,25 @@ export interface AdminConfig {
     type: 'movie' | 'tv';
     query: string;
     from: 'config' | 'custom';
+    disabled?: boolean;
+  }[];
+  // 配置订阅
+  ConfigSubscribtion?: {
+    URL: string;
+    AutoUpdate: boolean;
+    LastCheck?: string;
+  };
+  // 配置文件内容
+  ConfigFile?: string;
+  // 直播配置
+  LiveConfig?: {
+    key: string;
+    name: string;
+    url: string;
+    ua?: string;
+    epg?: string;
+    from: 'config' | 'custom';
+    channelNumber?: number;
     disabled?: boolean;
   }[];
 }

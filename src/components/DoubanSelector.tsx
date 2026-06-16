@@ -10,7 +10,7 @@ interface SelectorOption {
 }
 
 interface DoubanSelectorProps {
-  type: 'movie' | 'tv' | 'show';
+  type: 'movie' | 'tv' | 'show' | 'anime';
   primarySelection?: string;
   secondarySelection?: string;
   onPrimaryChange: (value: string) => void;
@@ -72,6 +72,14 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
     { label: '全部', value: 'show' },
     { label: '国内', value: 'show_domestic' },
     { label: '国外', value: 'show_foreign' },
+  ];
+
+  // 动漫选择器选项
+  const animeOptions: SelectorOption[] = [
+    { label: '全部', value: 'anime' },
+    { label: '日本动漫', value: 'anime_japanese' },
+    { label: '欧美动漫', value: 'anime_american' },
+    { label: '华语动漫', value: 'anime_chinese' },
   ];
 
   // 更新指示器位置的通用函数
@@ -138,6 +146,10 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
       secondaryActiveIndex = showOptions.findIndex(
         (opt) => opt.value === (secondarySelection || showOptions[0].value)
       );
+    } else if (type === 'anime') {
+      secondaryActiveIndex = animeOptions.findIndex(
+        (opt) => opt.value === (secondarySelection || animeOptions[0].value)
+      );
     }
 
     if (secondaryActiveIndex >= 0) {
@@ -186,6 +198,11 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
         (opt) => opt.value === secondarySelection
       );
       options = showOptions;
+    } else if (type === 'anime') {
+      activeIndex = animeOptions.findIndex(
+        (opt) => opt.value === secondarySelection
+      );
+      options = animeOptions;
     }
 
     if (options.length > 0) {
@@ -317,6 +334,23 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
             {renderCapsuleSelector(
               showOptions,
               secondarySelection || showOptions[0].value,
+              onSecondaryChange,
+              false
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 动漫类型 - 只显示一级选择器 */}
+      {type === 'anime' && (
+        <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
+          <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
+            类型
+          </span>
+          <div className='overflow-x-auto'>
+            {renderCapsuleSelector(
+              animeOptions,
+              secondarySelection || animeOptions[0].value,
               onSecondaryChange,
               false
             )}

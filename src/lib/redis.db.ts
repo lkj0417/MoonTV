@@ -362,6 +362,19 @@ export class RedisStorage implements IStorage {
 
     return configs;
   }
+
+  // ---------- 清空所有数据 ----------
+  async clearAllData(): Promise<void> {
+    // 删除所有用户相关的key
+    const userKeys = await withRetry(() => this.client.keys('u:*'));
+
+    if (userKeys.length > 0) {
+      await withRetry(() => this.client.del(userKeys));
+    }
+
+    // 删除管理员配置
+    await withRetry(() => this.client.del(this.adminConfigKey()));
+  }
 }
 
 // 单例 Redis 客户端

@@ -223,6 +223,13 @@ export class DbManager {
     }
     return {};
   }
+
+  // ---------- 清空所有数据 ----------
+  async clearAllData(): Promise<void> {
+    if (typeof (this.storage as any).clearAllData === 'function') {
+      await (this.storage as any).clearAllData();
+    }
+  }
 }
 
 // 导出默认实例

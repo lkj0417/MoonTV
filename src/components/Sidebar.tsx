@@ -2,7 +2,7 @@
 
 'use client';
 
-import { Clover, Film, Home, Menu, Search, Star, Tv } from 'lucide-react';
+import { Cat, Clover, Film, Home, Menu, Radio, Search, Star, Tv } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -136,6 +136,11 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
       href: '/douban?type=tv',
     },
     {
+      icon: Cat,
+      label: '动漫',
+      href: '/douban?type=anime',
+    },
+    {
       icon: Clover,
       label: '综艺',
       href: '/douban?type=show',
@@ -144,15 +149,31 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
 
   useEffect(() => {
     const runtimeConfig = (window as any).RUNTIME_CONFIG;
+    if (runtimeConfig?.ENABLE_WEB_LIVE) {
+      setMenuItems((prevItems) => {
+        if (prevItems.some((item) => item.href === '/live')) return prevItems;
+        return [
+          ...prevItems,
+          {
+            icon: Radio,
+            label: '直播',
+            href: '/live',
+          },
+        ];
+      });
+    }
     if (runtimeConfig?.CUSTOM_CATEGORIES?.length > 0) {
-      setMenuItems((prevItems) => [
-        ...prevItems,
-        {
-          icon: Star,
-          label: '自定义',
-          href: '/douban?type=custom',
-        },
-      ]);
+      setMenuItems((prevItems) => {
+        if (prevItems.some((item) => item.href === '/douban?type=custom')) return prevItems;
+        return [
+          ...prevItems,
+          {
+            icon: Star,
+            label: '自定义',
+            href: '/douban?type=custom',
+          },
+        ];
+      });
     }
   }, []);
 
