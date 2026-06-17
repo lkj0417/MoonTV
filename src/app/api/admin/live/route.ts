@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthInfoFromCookie } from '@/lib/auth';
 import { db } from '@/lib/db';
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,7 +17,10 @@ export async function POST(req: NextRequest) {
 
     // 检查用户权限（只有站长可以管理直播源）
     if (authInfo.username !== process.env.USERNAME) {
-      return NextResponse.json({ error: '权限不足，只有站长可以管理直播源' }, { status: 401 });
+      return NextResponse.json(
+        { error: '权限不足，只有站长可以管理直播源' },
+        { status: 401 }
+      );
     }
 
     const { action, source, key } = await req.json();
@@ -40,11 +43,16 @@ export async function POST(req: NextRequest) {
       case 'add': {
         // 添加新的直播源
         if (!source || !source.name || !source.url) {
-          return NextResponse.json({ error: '直播源信息不完整' }, { status: 400 });
+          return NextResponse.json(
+            { error: '直播源信息不完整' },
+            { status: 400 }
+          );
         }
 
         // 检查是否已存在同名直播源
-        const exists = currentConfig.LiveConfig.some(s => s.key === source.key);
+        const exists = currentConfig.LiveConfig.some(
+          (s) => s.key === source.key
+        );
         if (exists) {
           return NextResponse.json({ error: '直播源已存在' }, { status: 400 });
         }
@@ -60,16 +68,24 @@ export async function POST(req: NextRequest) {
         });
 
         await db.saveAdminConfig(currentConfig);
-        return NextResponse.json({ message: '添加成功', liveConfig: currentConfig.LiveConfig });
+        return NextResponse.json({
+          message: '添加成功',
+          liveConfig: currentConfig.LiveConfig,
+        });
       }
 
       case 'update': {
         // 更新直播源
         if (!source || !source.key) {
-          return NextResponse.json({ error: '直播源信息不完整' }, { status: 400 });
+          return NextResponse.json(
+            { error: '直播源信息不完整' },
+            { status: 400 }
+          );
         }
 
-        const index = currentConfig.LiveConfig.findIndex(s => s.key === source.key);
+        const index = currentConfig.LiveConfig.findIndex(
+          (s) => s.key === source.key
+        );
         if (index === -1) {
           return NextResponse.json({ error: '直播源不存在' }, { status: 404 });
         }
@@ -85,24 +101,40 @@ export async function POST(req: NextRequest) {
         };
 
         await db.saveAdminConfig(currentConfig);
-        return NextResponse.json({ message: '更新成功', liveConfig: currentConfig.LiveConfig });
+        return NextResponse.json({
+          message: '更新成功',
+          liveConfig: currentConfig.LiveConfig,
+        });
       }
 
       case 'delete': {
         // 删除直播源
         if (!key) {
-          return NextResponse.json({ error: '缺少直播源 key' }, { status: 400 });
+          return NextResponse.json(
+            { error: '缺少直播源 key' },
+            { status: 400 }
+          );
         }
 
-        const sourceToDelete = currentConfig.LiveConfig.find(s => s.key === key);
+        const sourceToDelete = currentConfig.LiveConfig.find(
+          (s) => s.key === key
+        );
         if (sourceToDelete?.from === 'config') {
-          return NextResponse.json({ error: '内置直播源不可删除' }, { status: 403 });
+          return NextResponse.json(
+            { error: '内置直播源不可删除' },
+            { status: 403 }
+          );
         }
 
-        currentConfig.LiveConfig = currentConfig.LiveConfig.filter(s => s.key !== key);
+        currentConfig.LiveConfig = currentConfig.LiveConfig.filter(
+          (s) => s.key !== key
+        );
 
         await db.saveAdminConfig(currentConfig);
-        return NextResponse.json({ message: '删除成功', liveConfig: currentConfig.LiveConfig });
+        return NextResponse.json({
+          message: '删除成功',
+          liveConfig: currentConfig.LiveConfig,
+        });
       }
 
       default:

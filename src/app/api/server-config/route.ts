@@ -6,7 +6,7 @@ import { getConfig } from '@/lib/config';
 
 // server-config needs access to getConfig which may use Node built-ins in
 // certain deployment modes. Force Node runtime to avoid bundling issues.
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 export async function GET(request: NextRequest) {
   console.log('server-config called: ', request.url);

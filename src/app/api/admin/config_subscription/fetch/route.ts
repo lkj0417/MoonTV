@@ -2,14 +2,17 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 export async function POST(req: NextRequest) {
   try {
     const { url } = await req.json();
 
     if (!url || typeof url !== 'string') {
-      return NextResponse.json({ error: '请提供有效的订阅URL' }, { status: 400 });
+      return NextResponse.json(
+        { error: '请提供有效的订阅URL' },
+        { status: 400 }
+      );
     }
 
     // 验证URL格式
@@ -22,14 +25,18 @@ export async function POST(req: NextRequest) {
 
     // 仅支持 http/https
     if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
-      return NextResponse.json({ error: '仅支持 http/https 协议' }, { status: 400 });
+      return NextResponse.json(
+        { error: '仅支持 http/https 协议' },
+        { status: 400 }
+      );
     }
 
     // 发送请求获取配置
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        'Accept': 'application/json, text/plain, */*',
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        Accept: 'application/json, text/plain, */*',
       },
       signal: AbortSignal.timeout(30000), // 30秒超时
     });
@@ -65,20 +72,25 @@ export async function POST(req: NextRequest) {
     try {
       JSON.parse(configContent);
     } catch {
-      return NextResponse.json({ error: '订阅配置内容不是有效的 JSON 格式' }, { status: 400 });
+      return NextResponse.json(
+        { error: '订阅配置内容不是有效的 JSON 格式' },
+        { status: 400 }
+      );
     }
 
     return NextResponse.json({
       configContent,
       contentType,
     });
-
   } catch (error) {
     console.error('拉取订阅配置失败:', error);
 
     if (error instanceof Error) {
       if (error.name === 'TimeoutError') {
-        return NextResponse.json({ error: '请求超时，请检查网络或订阅地址' }, { status: 408 });
+        return NextResponse.json(
+          { error: '请求超时，请检查网络或订阅地址' },
+          { status: 408 }
+        );
       }
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
@@ -90,7 +102,8 @@ export async function POST(req: NextRequest) {
 // Base58 解码（用于解析 Base58 编码的配置文件）
 function decodeBase58(encoded: string): string {
   // Base58 字符集
-  const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  const BASE58_ALPHABET =
+    '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 
   try {
     // 移除可能的空格和换行

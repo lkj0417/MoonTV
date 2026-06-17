@@ -6,7 +6,7 @@ import { db } from '@/lib/db';
 
 // Use Node runtime so server-side config access (getConfig) and DB operations
 // don't trigger edge bundler errors for Node built-ins.
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 // 读取存储类型环境变量，默认 localstorage
 const STORAGE_TYPE =

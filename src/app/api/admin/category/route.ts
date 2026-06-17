@@ -10,7 +10,7 @@ import { IStorage } from '@/lib/types';
 // This route manipulates admin configuration which may rely on Node APIs
 // (loading config from disk). Build failures occur if bundled for the Edge
 // runtime because Node built-ins like `fs` are unavailable. Force Node runtime.
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 // 支持的操作类型
 type Action = 'add' | 'disable' | 'enable' | 'delete' | 'sort';

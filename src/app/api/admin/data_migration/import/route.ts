@@ -1,17 +1,44 @@
-/* eslint-disable @typescript-eslint/no-explicit-any,no-console */
+/* eslint-disable @typescript-eslint/no-explicit-any,no-console,no-constant-condition */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { promisify } from 'util';
-import { gunzip } from 'zlib';
 
 import { getAuthInfoFromCookie } from '@/lib/auth';
 import { configSelfCheck, setCachedConfig } from '@/lib/config';
 import { SimpleCrypto } from '@/lib/crypto';
 import { db } from '@/lib/db';
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
-const gunzipAsync = promisify(gunzip);
+async function gzipDecompressFromBase64(base64Data: string): Promise<string> {
+  const binaryString = atob(base64Data);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+
+  const decompressedStream = new DecompressionStream('gzip');
+  const writer = decompressedStream.writable.getWriter();
+  writer.write(bytes);
+  writer.close();
+
+  const reader = decompressedStream.readable.getReader();
+  const chunks: Uint8Array[] = [];
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+  }
+
+  const totalLength = chunks.reduce((acc, c) => acc + c.length, 0);
+  const result = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.length;
+  }
+
+  return new TextDecoder().decode(result);
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -32,7 +59,10 @@ export async function POST(req: NextRequest) {
 
     // 检查用户权限（只有站长可以导入数据）
     if (authInfo.username !== process.env.USERNAME) {
-      return NextResponse.json({ error: '权限不足，只有站长可以导入数据' }, { status: 401 });
+      return NextResponse.json(
+        { error: '权限不足，只有站长可以导入数据' },
+        { status: 401 }
+      );
     }
 
     // 解析表单数据
@@ -52,17 +82,18 @@ export async function POST(req: NextRequest) {
     const encryptedData = await file.text();
 
     // 解密数据
-    let decryptedData: string;
+    let decryptedBase64: string;
     try {
-      decryptedData = SimpleCrypto.decrypt(encryptedData, password);
+      decryptedBase64 = SimpleCrypto.decrypt(encryptedData, password);
     } catch (error) {
-      return NextResponse.json({ error: '解密失败，请检查密码是否正确' }, { status: 400 });
+      return NextResponse.json(
+        { error: '解密失败，请检查密码是否正确' },
+        { status: 400 }
+      );
     }
 
     // 解压缩数据
-    const compressedBuffer = Buffer.from(decryptedData, 'base64');
-    const decompressedBuffer = await gunzipAsync(compressedBuffer);
-    const decompressedData = decompressedBuffer.toString();
+    const decompressedData = await gzipDecompressFromBase64(decryptedBase64);
 
     // 解析JSON数据
     let importData: any;
@@ -73,11 +104,15 @@ export async function POST(req: NextRequest) {
     }
 
     // 验证数据格式
-    if (!importData.data || !importData.data.adminConfig || !importData.data.userData) {
+    if (
+      !importData.data ||
+      !importData.data.adminConfig ||
+      !importData.data.userData
+    ) {
       return NextResponse.json({ error: '备份文件格式无效' }, { status: 400 });
     }
 
-    // 开始导入数据 - 先清空现有数据
+    // 开始导入数据——先清空现有数据
     await db.clearAllData();
 
     // 导入管理员配置
@@ -111,7 +146,8 @@ export async function POST(req: NextRequest) {
 
       // 导入搜索历史
       if (user.searchHistory && Array.isArray(user.searchHistory)) {
-        for (const keyword of user.searchHistory.reverse()) { // 反转以保持顺序
+        for (const keyword of user.searchHistory.reverse()) {
+          // 反转以保持顺序
           await db.addSearchHistory(username, keyword);
         }
       }
@@ -131,9 +167,11 @@ export async function POST(req: NextRequest) {
       message: '数据导入成功',
       importedUsers: Object.keys(userData).length,
       timestamp: importData.timestamp,
-      serverVersion: typeof importData.serverVersion === 'string' ? importData.serverVersion : '未知版本'
+      serverVersion:
+        typeof importData.serverVersion === 'string'
+          ? importData.serverVersion
+          : '未知版本',
     });
-
   } catch (error) {
     console.error('数据导入失败:', error);
     return NextResponse.json(

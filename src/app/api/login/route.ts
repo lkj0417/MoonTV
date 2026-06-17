@@ -6,7 +6,7 @@ import { db } from '@/lib/db';
 
 // Use Node runtime to ensure getConfig and DB access work correctly during
 // build and runtime when Node built-ins may be required.
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 // 读取存储类型环境变量，默认 localstorage
 const STORAGE_TYPE =

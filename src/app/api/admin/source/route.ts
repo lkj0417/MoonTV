@@ -9,7 +9,7 @@ import { IStorage } from '@/lib/types';
 
 // This endpoint operates on server-side admin configuration and may require
 // Node.js built-ins. Ensure it's compiled for Node runtime.
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 // 支持的操作类型
 type Action = 'add' | 'disable' | 'enable' | 'delete' | 'sort';

@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthInfoFromCookie } from '@/lib/auth';
 import { db } from '@/lib/db';
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,10 +17,14 @@ export async function POST(req: NextRequest) {
 
     // 检查用户权限（只有站长可以保存配置文件）
     if (authInfo.username !== process.env.USERNAME) {
-      return NextResponse.json({ error: '权限不足，只有站长可以保存配置文件' }, { status: 401 });
+      return NextResponse.json(
+        { error: '权限不足，只有站长可以保存配置文件' },
+        { status: 401 }
+      );
     }
 
-    const { configFile, subscriptionUrl, autoUpdate, lastCheckTime } = await req.json();
+    const { configFile, subscriptionUrl, autoUpdate, lastCheckTime } =
+      await req.json();
 
     // 验证配置文件内容
     if (!configFile || typeof configFile !== 'string') {
@@ -34,7 +38,10 @@ export async function POST(req: NextRequest) {
         throw new Error('配置文件必须是 JSON 对象');
       }
     } catch (error) {
-      return NextResponse.json({ error: '配置文件必须是有效的 JSON 格式' }, { status: 400 });
+      return NextResponse.json(
+        { error: '配置文件必须是有效的 JSON 格式' },
+        { status: 400 }
+      );
     }
 
     // 获取当前配置
@@ -60,7 +67,6 @@ export async function POST(req: NextRequest) {
       message: '配置文件保存成功',
       configSubscribtion: updatedConfig.ConfigSubscribtion,
     });
-
   } catch (error) {
     console.error('保存配置文件失败:', error);
     return NextResponse.json(

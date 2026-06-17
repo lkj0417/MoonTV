@@ -6,7 +6,7 @@ import { yellowWords } from '@/lib/yellow';
 
 // This search endpoint relies on server-side configuration; ensure it's
 // executed in Node runtime so getConfig can access Node-specific APIs if needed.
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 // OrionTV 兼容接口
 export async function GET(request: Request) {

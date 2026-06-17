@@ -9,7 +9,7 @@ import { IStorage } from '@/lib/types';
 
 // Requires Node runtime because it uses getConfig and storage implementations
 // that rely on Node built-ins in some deployment setups. Use nodejs runtime.
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 // 支持的操作类型
 const ACTIONS = [
