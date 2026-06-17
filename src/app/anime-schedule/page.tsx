@@ -14,38 +14,36 @@ import Link from 'next/link';
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { AnimeScheduleDay, AnimeScheduleItem } from '@/lib/anime-schedule';
+import { processImageUrl } from '@/lib/utils';
 
 import PageLayout from '@/components/PageLayout';
 
-// Local storage key for tracking followed anime
 const FOLLOWED_ANIME_KEY = 'anime_schedule_followed';
 
-function getFollowedAnime(): Set<string> {
-  if (typeof window === 'undefined') return new Set();
+function loadFollowed(): string[] {
+  if (typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem(FOLLOWED_ANIME_KEY);
-    if (!raw) return new Set();
-    return new Set(JSON.parse(raw));
+    return raw ? JSON.parse(raw) : [];
   } catch {
-    return new Set();
+    return [];
   }
 }
 
-function saveFollowedAnime(ids: Set<string>) {
+function saveFollowed(ids: string[]) {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(FOLLOWED_ANIME_KEY, JSON.stringify(Array.from(ids)));
+  localStorage.setItem(FOLLOWED_ANIME_KEY, JSON.stringify(ids));
 }
 
 function AnimeScheduleClient() {
   const [schedule, setSchedule] = useState<AnimeScheduleDay[]>([]);
   const [loading, setLoading] = useState(true);
-  const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
+  const [followedIds, setFollowedIds] = useState<string[]>([]);
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<'week' | 'list'>('week');
 
   useEffect(() => {
-    // Load followed anime from localStorage
-    setFollowedIds(getFollowedAnime());
+    setFollowedIds(loadFollowed());
   }, []);
 
   useEffect(() => {
@@ -54,11 +52,11 @@ function AnimeScheduleClient() {
         setLoading(true);
         const res = await fetch('/api/anime-schedule');
         const json = await res.json();
-        if (json.code === 200) {
+        if (json.code === 200 && Array.isArray(json.data)) {
           setSchedule(json.data);
         }
-      } catch (err) {
-        // Fetch error handled silently
+      } catch {
+        // Silently handle network errors
       } finally {
         setLoading(false);
       }
@@ -68,25 +66,22 @@ function AnimeScheduleClient() {
 
   const toggleFollow = useCallback((id: string) => {
     setFollowedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      saveFollowedAnime(next);
+      const next = prev.includes(id)
+        ? prev.filter((x) => x !== id)
+        : [...prev, id];
+      saveFollowed(next);
       return next;
     });
   }, []);
 
   const today = useMemo(() => {
     const d = new Date().getDay();
-    return d === 0 ? 7 : d; // Sunday = 7 in our system
+    return d === 0 ? 7 : d;
   }, []);
 
   const followedItems = useMemo(() => {
     return schedule.flatMap((day) =>
-      day.items.filter((item) => followedIds.has(item.id))
+      day.items.filter((item) => followedIds.includes(item.id))
     );
   }, [schedule, followedIds]);
 
@@ -147,22 +142,29 @@ function AnimeScheduleClient() {
     >
       {/* Poster */}
       <Link
-        href={item.douban_id ? `/play?douban=${item.douban_id}` : '#'}
-        className={`block relative overflow-hidden ${
-          compact ? 'w-14 h-20 flex-shrink-0 rounded-lg' : 'aspect-[2/3]'
+        href={
+          item.douban_id
+            ? `/search?q=${encodeURIComponent(item.title_cn || item.title)}`
+            : '#'
+        }
+        className={`block relative overflow-hidden flex-shrink-0 ${
+          compact ? 'w-14 h-20 rounded-lg' : 'aspect-[2/3]'
         }`}
       >
         <Image
-          src={item.poster}
+          src={processImageUrl(item.poster)}
           alt={item.title_cn || item.title}
-          className='w-full h-full object-cover group-hover:scale-105 transition-transform duration-300'
-          loading='lazy'
           fill
-          sizes='(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 14vw'
+          className='object-cover group-hover:scale-105 transition-transform duration-300'
+          sizes={
+            compact
+              ? '56px'
+              : '(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 14vw'
+          }
           unoptimized
         />
         {item.current_episode && item.episodes && (
-          <span className='absolute bottom-1 right-1 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded'>
+          <span className='absolute bottom-1 right-1 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded z-10'>
             {item.current_episode}/{item.episodes}
           </span>
         )}
@@ -171,7 +173,11 @@ function AnimeScheduleClient() {
       {/* Info */}
       <div className={`${compact ? 'flex-1 min-w-0' : 'p-3'}`}>
         <Link
-          href={item.douban_id ? `/play?douban=${item.douban_id}` : '#'}
+          href={
+            item.douban_id
+              ? `/search?q=${encodeURIComponent(item.title_cn || item.title)}`
+              : '#'
+          }
           className={`block font-medium text-gray-800 dark:text-gray-200 hover:text-green-600 dark:hover:text-green-400 transition-colors line-clamp-2 ${
             compact ? 'text-sm' : 'text-sm sm:text-base'
           }`}
@@ -204,14 +210,18 @@ function AnimeScheduleClient() {
 
         {/* Follow button */}
         <button
-          onClick={() => toggleFollow(item.id)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleFollow(item.id);
+          }}
           className={`mt-2 flex items-center gap-1 text-xs px-2 py-1 rounded-full transition-all ${
-            followedIds.has(item.id)
+            followedIds.includes(item.id)
               ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
               : 'bg-gray-100 text-gray-500 hover:bg-green-50 hover:text-green-600 dark:bg-gray-700/50 dark:text-gray-400 dark:hover:bg-green-900/20 dark:hover:text-green-400'
           } ${compact ? 'mt-1' : ''}`}
         >
-          {followedIds.has(item.id) ? (
+          {followedIds.includes(item.id) ? (
             <>
               <Bell className='w-3 h-3' />
               已追
@@ -230,7 +240,6 @@ function AnimeScheduleClient() {
   return (
     <PageLayout activePath='/anime-schedule'>
       <div className='px-4 sm:px-10 py-4 sm:py-8'>
-        {/* Header */}
         <div className='mb-6 sm:mb-8'>
           <div className='flex items-center justify-between'>
             <div>
@@ -242,7 +251,6 @@ function AnimeScheduleClient() {
               </p>
             </div>
             <div className='flex items-center gap-2'>
-              {/* View toggle */}
               <div className='flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1'>
                 <button
                   onClick={() => setViewMode('week')}
@@ -272,7 +280,6 @@ function AnimeScheduleClient() {
         </div>
 
         {viewMode === 'list' ? (
-          /* Followed anime list view */
           <div className='max-w-4xl mx-auto'>
             <div className='mb-6'>
               <h2 className='text-lg font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2'>
@@ -302,7 +309,6 @@ function AnimeScheduleClient() {
               </div>
             )}
 
-            {/* All schedule in list form */}
             <div className='mt-10'>
               <h2 className='text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4'>
                 全部新番
@@ -351,15 +357,12 @@ function AnimeScheduleClient() {
             </div>
           </div>
         ) : (
-          /* Week grid view */
           <div>
-            {/* Today indicator */}
             <div className='flex items-center gap-2 mb-6 text-sm text-gray-500 dark:text-gray-400'>
               <Star className='w-4 h-4 text-amber-500' />
               今天是 {weekdayLabels[today]}，标注色块为今日更新
             </div>
 
-            {/* 7-day grid */}
             <div className='grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3'>
               {schedule.map((day) => {
                 const isToday = day.weekday === today;
@@ -372,7 +375,6 @@ function AnimeScheduleClient() {
                         : 'border-gray-200/50 dark:border-gray-700/50 bg-white/40 dark:bg-gray-800/40'
                     }`}
                   >
-                    {/* Day header */}
                     <div className='text-center mb-3'>
                       <span
                         className={`inline-block px-4 py-1 text-xs font-bold text-white rounded-full bg-gradient-to-r ${
@@ -388,7 +390,6 @@ function AnimeScheduleClient() {
                       </span>
                     </div>
 
-                    {/* Anime cards */}
                     {day.items.length === 0 ? (
                       <div className='text-center py-8'>
                         <p className='text-xs text-gray-400 dark:text-gray-500'>
