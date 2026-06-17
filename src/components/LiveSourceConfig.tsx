@@ -1,7 +1,7 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any, no-console */
 'use client';
 
-import { Plus, Trash2, RefreshCw, Edit2, Save, X, Tv } from 'lucide-react';
+import { Edit2, Plus, RefreshCw, Trash2, Tv } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { AdminConfig } from '@/lib/admin.types';
@@ -104,7 +104,7 @@ const LiveSourceConfig = ({ config, refreshConfig }: LiveSourceConfigProps) => {
 
   const handleToggleDisabled = async (key: string, disabled: boolean) => {
     try {
-      const source = liveSources.find(s => s.key === key);
+      const source = liveSources.find((s) => s.key === key);
       if (!source) return;
 
       const response = await fetch('/api/admin/live', {
@@ -177,73 +177,81 @@ const LiveSourceConfig = ({ config, refreshConfig }: LiveSourceConfigProps) => {
   };
 
   return (
-    <div className="space-y-4">
+    <div className='space-y-4'>
       {/* 标题和添加按钮 */}
-      <div className="flex items-center justify-between">
+      <div className='flex items-center justify-between'>
         <div>
-          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300'>
             直播源列表
           </h4>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          <p className='text-xs text-gray-500 dark:text-gray-400 mt-1'>
             共 {liveSources.length} 个直播源
           </p>
         </div>
         <button
           onClick={() => setIsAddingNew(true)}
-          className="flex items-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors"
+          className='flex items-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors'
         >
-          <Plus className="w-4 h-4" />
+          <Plus className='w-4 h-4' />
           添加
         </button>
       </div>
 
       {/* 添加新源表单 */}
       {isAddingNew && (
-        <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+        <div className='p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3'>
+          <div className='grid grid-cols-2 gap-3'>
             <input
-              type="text"
-              placeholder="名称"
+              type='text'
+              placeholder='名称'
               value={newSource.name}
-              onChange={(e) => setNewSource({ ...newSource, name: e.target.value })}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
+              onChange={(e) =>
+                setNewSource({ ...newSource, name: e.target.value })
+              }
+              className='px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm'
             />
             <input
-              type="url"
-              placeholder="M3U URL"
+              type='url'
+              placeholder='M3U URL'
               value={newSource.url}
-              onChange={(e) => setNewSource({ ...newSource, url: e.target.value })}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
+              onChange={(e) =>
+                setNewSource({ ...newSource, url: e.target.value })
+              }
+              className='px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm'
             />
             <input
-              type="text"
-              placeholder="User-Agent (可选)"
+              type='text'
+              placeholder='User-Agent (可选)'
               value={newSource.ua || ''}
-              onChange={(e) => setNewSource({ ...newSource, ua: e.target.value })}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
+              onChange={(e) =>
+                setNewSource({ ...newSource, ua: e.target.value })
+              }
+              className='px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm'
             />
             <input
-              type="url"
-              placeholder="EPG 节目单地址 (可选)"
+              type='url'
+              placeholder='EPG 节目单地址 (可选)'
               value={newSource.epg || ''}
-              onChange={(e) => setNewSource({ ...newSource, epg: e.target.value })}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
+              onChange={(e) =>
+                setNewSource({ ...newSource, epg: e.target.value })
+              }
+              className='px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm'
             />
           </div>
-          <div className="flex justify-end gap-2">
+          <div className='flex justify-end gap-2'>
             <button
               onClick={() => {
                 setIsAddingNew(false);
                 setNewSource({ name: '', url: '', ua: '', epg: '' });
               }}
-              className="px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg text-sm transition-colors"
+              className='px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg text-sm transition-colors'
             >
               取消
             </button>
             <button
               onClick={handleAddSource}
               disabled={!newSource.name || !newSource.url || isLoading}
-              className="px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg text-sm transition-colors"
+              className='px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg text-sm transition-colors'
             >
               保存
             </button>
@@ -253,51 +261,59 @@ const LiveSourceConfig = ({ config, refreshConfig }: LiveSourceConfigProps) => {
 
       {/* 编辑源表单 */}
       {editingSource && (
-        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700 space-y-3">
-          <h5 className="text-sm font-medium text-blue-800 dark:text-blue-300">
+        <div className='p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700 space-y-3'>
+          <h5 className='text-sm font-medium text-blue-800 dark:text-blue-300'>
             编辑直播源
           </h5>
-          <div className="grid grid-cols-2 gap-3">
+          <div className='grid grid-cols-2 gap-3'>
             <input
-              type="text"
-              placeholder="名称"
+              type='text'
+              placeholder='名称'
               value={editingSource.name}
-              onChange={(e) => setEditingSource({ ...editingSource, name: e.target.value })}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
+              onChange={(e) =>
+                setEditingSource({ ...editingSource, name: e.target.value })
+              }
+              className='px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm'
             />
             <input
-              type="url"
-              placeholder="M3U URL"
+              type='url'
+              placeholder='M3U URL'
               value={editingSource.url}
-              onChange={(e) => setEditingSource({ ...editingSource, url: e.target.value })}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
+              onChange={(e) =>
+                setEditingSource({ ...editingSource, url: e.target.value })
+              }
+              className='px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm'
             />
             <input
-              type="text"
-              placeholder="User-Agent (可选)"
+              type='text'
+              placeholder='User-Agent (可选)'
               value={editingSource.ua || ''}
-              onChange={(e) => setEditingSource({ ...editingSource, ua: e.target.value })}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
+              onChange={(e) =>
+                setEditingSource({ ...editingSource, ua: e.target.value })
+              }
+              className='px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm'
             />
             <input
-              type="url"
-              placeholder="EPG 节目单地址 (可选)"
+              type='url'
+              placeholder='EPG 节目单地址 (可选)'
               value={editingSource.epg || ''}
-              onChange={(e) => setEditingSource({ ...editingSource, epg: e.target.value })}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
+              onChange={(e) =>
+                setEditingSource({ ...editingSource, epg: e.target.value })
+              }
+              className='px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm'
             />
           </div>
-          <div className="flex justify-end gap-2">
+          <div className='flex justify-end gap-2'>
             <button
               onClick={() => setEditingSource(null)}
-              className="px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg text-sm transition-colors"
+              className='px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg text-sm transition-colors'
             >
               取消
             </button>
             <button
               onClick={handleUpdateSource}
               disabled={isLoading}
-              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg text-sm transition-colors"
+              className='px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg text-sm transition-colors'
             >
               保存
             </button>
@@ -307,48 +323,53 @@ const LiveSourceConfig = ({ config, refreshConfig }: LiveSourceConfigProps) => {
 
       {/* 直播源列表 */}
       {liveSources.length === 0 ? (
-        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-          <Tv className="w-8 h-8 mx-auto mb-2 opacity-50" />
-          <p className="text-sm">暂无直播源</p>
+        <div className='text-center py-8 text-gray-500 dark:text-gray-400'>
+          <Tv className='w-8 h-8 mx-auto mb-2 opacity-50' />
+          <p className='text-sm'>暂无直播源</p>
         </div>
       ) : (
-        <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-900">
+        <div className='border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden'>
+          <table className='min-w-full divide-y divide-gray-200 dark:divide-gray-700'>
+            <thead className='bg-gray-50 dark:bg-gray-900'>
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                   名称
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                   频道数
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                   状态
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                <th className='px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                   操作
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+            <tbody className='divide-y divide-gray-200 dark:divide-gray-700'>
               {liveSources.map((source) => (
-                <tr key={source.key} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                  <td className="px-4 py-3">
+                <tr
+                  key={source.key}
+                  className='hover:bg-gray-50 dark:hover:bg-gray-800'
+                >
+                  <td className='px-4 py-3'>
                     <div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      <p className='text-sm font-medium text-gray-900 dark:text-gray-100'>
                         {source.name}
                       </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-xs">
+                      <p className='text-xs text-gray-500 dark:text-gray-400 truncate max-w-xs'>
                         {source.url}
                       </p>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                  <td className='px-4 py-3 text-sm text-gray-600 dark:text-gray-400'>
                     {source.channelNumber || '-'}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className='px-4 py-3'>
                     <button
-                      onClick={() => handleToggleDisabled(source.key, !source.disabled)}
+                      onClick={() =>
+                        handleToggleDisabled(source.key, !source.disabled)
+                      }
                       className={`px-2 py-1 text-xs rounded-full ${
                         source.disabled
                           ? 'bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400'
@@ -358,30 +379,38 @@ const LiveSourceConfig = ({ config, refreshConfig }: LiveSourceConfigProps) => {
                       {source.disabled ? '已禁用' : '启用'}
                     </button>
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex justify-end gap-1">
+                  <td className='px-4 py-3 text-right'>
+                    <div className='flex justify-end gap-1'>
                       <button
                         onClick={() => handleRefreshSource(source.key)}
-                        disabled={isRefreshing === source.key || source.disabled}
-                        className="p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors disabled:opacity-50"
-                        title="刷新频道"
+                        disabled={
+                          isRefreshing === source.key || source.disabled
+                        }
+                        className='p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors disabled:opacity-50'
+                        title='刷新频道'
                       >
-                        <RefreshCw className={`w-4 h-4 ${isRefreshing === source.key ? 'animate-spin' : ''}`} />
+                        <RefreshCw
+                          className={`w-4 h-4 ${
+                            isRefreshing === source.key ? 'animate-spin' : ''
+                          }`}
+                        />
                       </button>
                       <button
                         onClick={() => setEditingSource(source)}
-                        className="p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-                        title="编辑"
+                        className='p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors'
+                        title='编辑'
                       >
-                        <Edit2 className="w-4 h-4" />
+                        <Edit2 className='w-4 h-4' />
                       </button>
                       <button
                         onClick={() => handleDeleteSource(source.key)}
                         disabled={source.from === 'config'}
-                        className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors disabled:opacity-30"
-                        title={source.from === 'config' ? '内置源不可删除' : '删除'}
+                        className='p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors disabled:opacity-30'
+                        title={
+                          source.from === 'config' ? '内置源不可删除' : '删除'
+                        }
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className='w-4 h-4' />
                       </button>
                     </div>
                   </td>

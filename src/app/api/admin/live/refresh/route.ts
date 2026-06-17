@@ -2,6 +2,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
+import { getConfig } from '@/lib/config';
 import { deleteCachedLiveChannels, refreshLiveChannels } from '@/lib/live';
 
 export const runtime = 'nodejs';
@@ -15,10 +16,9 @@ export async function POST(req: NextRequest) {
     }
 
     // 获取当前配置中的直播源信息
-    const { getConfig } = await import('@/lib/config');
     const config = await getConfig();
 
-    const liveInfo = config.LiveConfig?.find(live => live.key === key);
+    const liveInfo = config.LiveConfig?.find((live) => live.key === key);
     if (!liveInfo) {
       return NextResponse.json({ error: '直播源不存在' }, { status: 404 });
     }

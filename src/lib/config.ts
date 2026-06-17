@@ -2,7 +2,7 @@
 
 import { getStorage } from '@/lib/db';
 
-import { AdminConfig, Source, CustomCategory } from './admin.types';
+import { AdminConfig } from './admin.types';
 import runtimeConfig from './runtime';
 
 export interface ApiSite {
@@ -43,9 +43,13 @@ export const API_CONFIG = {
 let cachedConfig: AdminConfig | null = null;
 
 async function loadConfigFile(): Promise<ConfigFileStruct> {
-  if (process.env.DOCKER_ENV === 'true') {
-    const fs = await import('fs');
-    const path = await import('path');
+  if (
+    process.env.DOCKER_ENV === 'true' &&
+    process.env.NEXT_RUNTIME !== 'edge'
+  ) {
+    const nodeRequire = eval('require') as NodeRequire;
+    const fs = nodeRequire('fs') as typeof import('fs');
+    const path = nodeRequire('path') as typeof import('path');
     const configPath = path.join(process.cwd(), 'config.json');
     const raw = fs.readFileSync(configPath, 'utf-8');
     console.log('load dynamic config success');
@@ -54,7 +58,10 @@ async function loadConfigFile(): Promise<ConfigFileStruct> {
   return runtimeConfig as unknown as ConfigFileStruct;
 }
 
-function createDefaultAdminConfig(fileConfig: ConfigFileStruct, users: { username: string; role: 'user' | 'owner' }[]): AdminConfig {
+function createDefaultAdminConfig(
+  fileConfig: ConfigFileStruct,
+  users: { username: string; role: 'user' | 'owner' }[]
+): AdminConfig {
   const apiSiteEntries = Object.entries(fileConfig.api_site);
   const customCategories = fileConfig.custom_category || [];
 
@@ -71,12 +78,14 @@ function createDefaultAdminConfig(fileConfig: ConfigFileStruct, users: { usernam
         process.env.NEXT_PUBLIC_DOUBAN_PROXY_TYPE || 'cmliussss-cdn-tencent',
       DoubanProxy: process.env.NEXT_PUBLIC_DOUBAN_PROXY || '',
       DoubanImageProxyType:
-        process.env.NEXT_PUBLIC_DOUBAN_IMAGE_PROXY_TYPE || 'cmliussss-cdn-tencent',
+        process.env.NEXT_PUBLIC_DOUBAN_IMAGE_PROXY_TYPE ||
+        'cmliussss-cdn-tencent',
       DoubanImageProxy: process.env.NEXT_PUBLIC_DOUBAN_IMAGE_PROXY || '',
       ImageProxy: process.env.NEXT_PUBLIC_IMAGE_PROXY || '',
       DisableYellowFilter:
         process.env.NEXT_PUBLIC_DISABLE_YELLOW_FILTER === 'true',
-      UserAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+      UserAgent:
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
     },
     UserConfig: {
       AllowRegister: process.env.NEXT_PUBLIC_ENABLE_REGISTER === 'true',
@@ -100,35 +109,58 @@ function createDefaultAdminConfig(fileConfig: ConfigFileStruct, users: { usernam
   };
 }
 
-function mergeSourceConfig(adminConfig: AdminConfig, fileConfig: ConfigFileStruct) {
-  const sourceConfigMap = new Map(adminConfig.SourceConfig.map(s => [s.key, s]));
+function mergeSourceConfig(
+  adminConfig: AdminConfig,
+  fileConfig: ConfigFileStruct
+) {
+  const sourceConfigMap = new Map(
+    adminConfig.SourceConfig.map((s) => [s.key, s])
+  );
   Object.entries(fileConfig.api_site).forEach(([key, site]) => {
     sourceConfigMap.set(key, { ...site, from: 'config', disabled: false });
   });
   adminConfig.SourceConfig = Array.from(sourceConfigMap.values());
-  adminConfig.SourceConfig.forEach(source => {
+  adminConfig.SourceConfig.forEach((source) => {
     if (!fileConfig.api_site[source.key]) {
       source.from = 'custom';
     }
   });
 }
 
-function mergeCustomCategories(adminConfig: AdminConfig, fileConfig: ConfigFileStruct) {
-  const customCategoriesMap = new Map(adminConfig.CustomCategories.map(c => [c.query + c.type, c]));
-  (fileConfig.custom_category || []).forEach(category => {
-    customCategoriesMap.set(category.query + category.type, { ...category, from: 'config', disabled: false });
+function mergeCustomCategories(
+  adminConfig: AdminConfig,
+  fileConfig: ConfigFileStruct
+) {
+  const customCategoriesMap = new Map(
+    adminConfig.CustomCategories.map((c) => [c.query + c.type, c])
+  );
+  (fileConfig.custom_category || []).forEach((category) => {
+    customCategoriesMap.set(category.query + category.type, {
+      ...category,
+      from: 'config',
+      disabled: false,
+    });
   });
   adminConfig.CustomCategories = Array.from(customCategoriesMap.values());
-  adminConfig.CustomCategories.forEach(category => {
-    if (!(fileConfig.custom_category || []).some(c => c.query === category.query && c.type === category.type)) {
+  adminConfig.CustomCategories.forEach((category) => {
+    if (
+      !(fileConfig.custom_category || []).some(
+        (c) => c.query === category.query && c.type === category.type
+      )
+    ) {
       category.from = 'custom';
     }
   });
 }
 
-function mergeUserConfig(adminConfig: AdminConfig, users: { username: string; role: 'user' | 'owner' }[]) {
-  const existingUsers = new Set(adminConfig.UserConfig.Users.map(u => u.username));
-  users.forEach(user => {
+function mergeUserConfig(
+  adminConfig: AdminConfig,
+  users: { username: string; role: 'user' | 'owner' }[]
+) {
+  const existingUsers = new Set(
+    adminConfig.UserConfig.Users.map((u) => u.username)
+  );
+  users.forEach((user) => {
     if (!existingUsers.has(user.username)) {
       adminConfig.UserConfig.Users.push(user);
     }
@@ -146,13 +178,14 @@ async function initConfig() {
   if (storageType !== 'localstorage') {
     const storage = getStorage();
     try {
-      let adminConfig = await storage.getAdminConfig();
+      const adminConfig = await storage.getAdminConfig();
       const userNames = await storage.getAllUsers().catch(() => []);
 
-      const users = userNames.map(username => ({ username, role: 'user' as const }));
+      const users: { username: string; role: 'user' | 'owner' }[] =
+        userNames.map((username) => ({ username, role: 'user' }));
       const ownerUsername = process.env.USERNAME;
       if (ownerUsername) {
-        const ownerIndex = users.findIndex(u => u.username === ownerUsername);
+        const ownerIndex = users.findIndex((u) => u.username === ownerUsername);
         if (ownerIndex !== -1) {
           users[ownerIndex].role = 'owner';
         } else {
@@ -190,10 +223,12 @@ export async function getConfig(): Promise<AdminConfig> {
 export async function resetConfig() {
   const storage = getStorage();
   const userNames = await storage.getAllUsers().catch(() => []);
-  const users = userNames.map(username => ({ username, role: 'user' as const }));
+  const users: { username: string; role: 'user' | 'owner' }[] = userNames.map(
+    (username) => ({ username, role: 'user' })
+  );
   const ownerUsername = process.env.USERNAME;
   if (ownerUsername) {
-    const ownerIndex = users.findIndex(u => u.username === ownerUsername);
+    const ownerIndex = users.findIndex((u) => u.username === ownerUsername);
     if (ownerIndex !== -1) {
       users[ownerIndex].role = 'owner';
     } else {
@@ -205,7 +240,7 @@ export async function resetConfig() {
   const newConfig = createDefaultAdminConfig(fileConfig, users);
 
   if (process.env.NEXT_PUBLIC_STORAGE_TYPE !== 'localstorage') {
-      await storage.setAdminConfig(newConfig);
+    await storage.setAdminConfig(newConfig);
   }
   cachedConfig = newConfig;
 }
@@ -230,7 +265,10 @@ export function setCachedConfig(config: AdminConfig): void {
 }
 
 export function configSelfCheck(config: AdminConfig): AdminConfig {
-  const defaultConfig = createDefaultAdminConfig({ api_site: {}, custom_category: [] }, []);
+  const defaultConfig = createDefaultAdminConfig(
+    { api_site: {}, custom_category: [] },
+    []
+  );
   if (!config.SiteConfig) config.SiteConfig = defaultConfig.SiteConfig;
   if (!config.UserConfig) config.UserConfig = defaultConfig.UserConfig;
   if (!config.SourceConfig) config.SourceConfig = [];
