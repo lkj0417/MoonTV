@@ -1,7 +1,27 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, no-console */
 'use client';
 
-import { Edit2, Plus, RefreshCw, Trash2, Tv } from 'lucide-react';
+import {
+  type DragEndEvent,
+  closestCenter,
+  DndContext,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  restrictToParentElement,
+  restrictToVerticalAxis,
+} from '@dnd-kit/modifiers';
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { Edit2, GripVertical, Plus, RefreshCw, Trash2, Tv } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { AdminConfig } from '@/lib/admin.types';
@@ -22,6 +42,112 @@ interface LiveSourceConfigProps {
   refreshConfig: () => Promise<void>;
 }
 
+function DraggableRow({
+  liveSource,
+  onEdit,
+  onDelete,
+  onRefresh,
+  onToggleDisabled,
+  isRefreshing,
+}: {
+  liveSource: LiveSource;
+  onEdit: (source: LiveSource) => void;
+  onDelete: (key: string) => void;
+  onRefresh: (key: string) => void;
+  onToggleDisabled: (key: string, disabled: boolean) => void;
+  isRefreshing: boolean;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: liveSource.key });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <tr
+      ref={setNodeRef}
+      style={style}
+      className={`hover:bg-gray-50 dark:hover:bg-gray-800 ${
+        liveSource.disabled ? 'opacity-60' : ''
+      }`}
+    >
+      <td className='px-2 py-3 w-8'>
+        <button
+          {...attributes}
+          {...listeners}
+          className='p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-grab active:cursor-grabbing'
+          title='拖拽排序'
+        >
+          <GripVertical className='w-4 h-4' />
+        </button>
+      </td>
+      <td className='px-4 py-3'>
+        <div>
+          <p className='text-sm font-medium text-gray-900 dark:text-gray-100'>
+            {liveSource.name}
+          </p>
+          <p className='text-xs text-gray-500 dark:text-gray-400 truncate max-w-xs'>
+            {liveSource.url}
+          </p>
+        </div>
+      </td>
+      <td className='px-4 py-3 text-sm text-gray-600 dark:text-gray-400'>
+        {liveSource.channelNumber || '-'}
+      </td>
+      <td className='px-4 py-3'>
+        <button
+          onClick={() => onToggleDisabled(liveSource.key, !liveSource.disabled)}
+          className={`px-2 py-1 text-xs rounded-full ${
+            liveSource.disabled
+              ? 'bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400'
+              : 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400'
+          }`}
+        >
+          {liveSource.disabled ? '已禁用' : '启用'}
+        </button>
+      </td>
+      <td className='px-4 py-3 text-right'>
+        <div className='flex justify-end gap-1'>
+          <button
+            onClick={() => onRefresh(liveSource.key)}
+            disabled={isRefreshing || liveSource.disabled}
+            className='p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors disabled:opacity-50'
+            title='刷新频道'
+          >
+            <RefreshCw
+              className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`}
+            />
+          </button>
+          <button
+            onClick={() => onEdit(liveSource)}
+            className='p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors'
+            title='编辑'
+          >
+            <Edit2 className='w-4 h-4' />
+          </button>
+          <button
+            onClick={() => onDelete(liveSource.key)}
+            disabled={liveSource.from === 'config'}
+            className='p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors disabled:opacity-30'
+            title={liveSource.from === 'config' ? '内置源不可删除' : '删除'}
+          >
+            <Trash2 className='w-4 h-4' />
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
 const LiveSourceConfig = ({ config, refreshConfig }: LiveSourceConfigProps) => {
   const [liveSources, setLiveSources] = useState<LiveSource[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -34,6 +160,14 @@ const LiveSourceConfig = ({ config, refreshConfig }: LiveSourceConfigProps) => {
     epg: '',
   });
   const [isRefreshing, setIsRefreshing] = useState<string | null>(null);
+  const [orderChanged, setOrderChanged] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 200, tolerance: 5 },
+    })
+  );
 
   useEffect(() => {
     if (config?.LiveConfig) {
@@ -69,6 +203,7 @@ const LiveSourceConfig = ({ config, refreshConfig }: LiveSourceConfigProps) => {
 
       setIsAddingNew(false);
       setNewSource({ name: '', url: '', ua: '', epg: '' });
+      setOrderChanged(false);
       await refreshConfig();
     } catch (error) {
       console.error('添加直播源失败:', error);
@@ -94,6 +229,7 @@ const LiveSourceConfig = ({ config, refreshConfig }: LiveSourceConfigProps) => {
         throw new Error('删除失败');
       }
 
+      setOrderChanged(false);
       await refreshConfig();
     } catch (error) {
       console.error('删除直播源失败:', error);
@@ -104,15 +240,12 @@ const LiveSourceConfig = ({ config, refreshConfig }: LiveSourceConfigProps) => {
 
   const handleToggleDisabled = async (key: string, disabled: boolean) => {
     try {
-      const source = liveSources.find((s) => s.key === key);
-      if (!source) return;
-
       const response = await fetch('/api/admin/live', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'update',
-          source: { ...source, disabled },
+          action: disabled ? 'disable' : 'enable',
+          key,
         }),
       });
 
@@ -168,9 +301,50 @@ const LiveSourceConfig = ({ config, refreshConfig }: LiveSourceConfigProps) => {
       }
 
       setEditingSource(null);
+      setOrderChanged(false);
       await refreshConfig();
     } catch (error) {
       console.error('更新直播源失败:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    setLiveSources((items) => {
+      const oldIndex = items.findIndex((i) => i.key === active.id);
+      const newIndex = items.findIndex((i) => i.key === over.id);
+      if (oldIndex === -1 || newIndex === -1) return items;
+      setOrderChanged(true);
+      return arrayMove(items, oldIndex, newIndex);
+    });
+  };
+
+  const handleSaveOrder = async () => {
+    try {
+      setIsLoading(true);
+      const order = liveSources.map((s) => s.key);
+
+      const response = await fetch('/api/admin/live', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'sort',
+          order,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('保存排序失败');
+      }
+
+      setOrderChanged(false);
+      await refreshConfig();
+    } catch (error) {
+      console.error('保存排序失败:', error);
     } finally {
       setIsLoading(false);
     }
@@ -186,6 +360,9 @@ const LiveSourceConfig = ({ config, refreshConfig }: LiveSourceConfigProps) => {
           </h4>
           <p className='text-xs text-gray-500 dark:text-gray-400 mt-1'>
             共 {liveSources.length} 个直播源
+            {liveSources.length > 1 && (
+              <span className='ml-2 text-gray-400'>(拖拽行首手柄可排序)</span>
+            )}
           </p>
         </div>
         <button
@@ -326,12 +503,14 @@ const LiveSourceConfig = ({ config, refreshConfig }: LiveSourceConfigProps) => {
         <div className='text-center py-8 text-gray-500 dark:text-gray-400'>
           <Tv className='w-8 h-8 mx-auto mb-2 opacity-50' />
           <p className='text-sm'>暂无直播源</p>
+          <p className='text-xs mt-1'>点击上方"添加"按钮添加 M3U 直播源</p>
         </div>
       ) : (
         <div className='border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden'>
           <table className='min-w-full divide-y divide-gray-200 dark:divide-gray-700'>
             <thead className='bg-gray-50 dark:bg-gray-900'>
               <tr>
+                <th className='w-8' />
                 <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                   名称
                 </th>
@@ -346,78 +525,45 @@ const LiveSourceConfig = ({ config, refreshConfig }: LiveSourceConfigProps) => {
                 </th>
               </tr>
             </thead>
-            <tbody className='divide-y divide-gray-200 dark:divide-gray-700'>
-              {liveSources.map((source) => (
-                <tr
-                  key={source.key}
-                  className='hover:bg-gray-50 dark:hover:bg-gray-800'
-                >
-                  <td className='px-4 py-3'>
-                    <div>
-                      <p className='text-sm font-medium text-gray-900 dark:text-gray-100'>
-                        {source.name}
-                      </p>
-                      <p className='text-xs text-gray-500 dark:text-gray-400 truncate max-w-xs'>
-                        {source.url}
-                      </p>
-                    </div>
-                  </td>
-                  <td className='px-4 py-3 text-sm text-gray-600 dark:text-gray-400'>
-                    {source.channelNumber || '-'}
-                  </td>
-                  <td className='px-4 py-3'>
-                    <button
-                      onClick={() =>
-                        handleToggleDisabled(source.key, !source.disabled)
-                      }
-                      className={`px-2 py-1 text-xs rounded-full ${
-                        source.disabled
-                          ? 'bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400'
-                          : 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400'
-                      }`}
-                    >
-                      {source.disabled ? '已禁用' : '启用'}
-                    </button>
-                  </td>
-                  <td className='px-4 py-3 text-right'>
-                    <div className='flex justify-end gap-1'>
-                      <button
-                        onClick={() => handleRefreshSource(source.key)}
-                        disabled={
-                          isRefreshing === source.key || source.disabled
-                        }
-                        className='p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors disabled:opacity-50'
-                        title='刷新频道'
-                      >
-                        <RefreshCw
-                          className={`w-4 h-4 ${
-                            isRefreshing === source.key ? 'animate-spin' : ''
-                          }`}
-                        />
-                      </button>
-                      <button
-                        onClick={() => setEditingSource(source)}
-                        className='p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors'
-                        title='编辑'
-                      >
-                        <Edit2 className='w-4 h-4' />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteSource(source.key)}
-                        disabled={source.from === 'config'}
-                        className='p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors disabled:opacity-30'
-                        title={
-                          source.from === 'config' ? '内置源不可删除' : '删除'
-                        }
-                      >
-                        <Trash2 className='w-4 h-4' />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+              modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+            >
+              <SortableContext
+                items={liveSources.map((s) => s.key)}
+                strategy={verticalListSortingStrategy}
+              >
+                <tbody className='divide-y divide-gray-200 dark:divide-gray-700'>
+                  {liveSources.map((source) => (
+                    <DraggableRow
+                      key={source.key}
+                      liveSource={source}
+                      onEdit={setEditingSource}
+                      onDelete={handleDeleteSource}
+                      onRefresh={handleRefreshSource}
+                      onToggleDisabled={handleToggleDisabled}
+                      isRefreshing={isRefreshing === source.key}
+                    />
+                  ))}
+                </tbody>
+              </SortableContext>
+            </DndContext>
           </table>
+        </div>
+      )}
+
+      {/* 保存排序按钮 */}
+      {orderChanged && (
+        <div className='flex justify-end'>
+          <button
+            onClick={handleSaveOrder}
+            disabled={isLoading}
+            className='px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg text-sm transition-colors'
+          >
+            {isLoading ? '保存中...' : '保存排序'}
+          </button>
         </div>
       )}
     </div>

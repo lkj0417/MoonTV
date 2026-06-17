@@ -12,6 +12,13 @@ export interface ApiSite {
   detail?: string;
 }
 
+interface LiveCfg {
+  name: string;
+  url: string;
+  ua?: string;
+  epg?: string;
+}
+
 interface ConfigFileStruct {
   cache_time?: number;
   api_site: {
@@ -22,6 +29,9 @@ interface ConfigFileStruct {
     type: 'movie' | 'tv';
     query: string;
   }[];
+  lives?: {
+    [key: string]: LiveCfg;
+  };
 }
 
 export const API_CONFIG = {
@@ -64,6 +74,7 @@ function createDefaultAdminConfig(
 ): AdminConfig {
   const apiSiteEntries = Object.entries(fileConfig.api_site);
   const customCategories = fileConfig.custom_category || [];
+  const livesFromFile = Object.entries(fileConfig.lives || []);
 
   return {
     SiteConfig: {
@@ -104,6 +115,16 @@ function createDefaultAdminConfig(
       name: category.name,
       type: category.type,
       query: category.query,
+      from: 'config',
+      disabled: false,
+    })),
+    LiveConfig: livesFromFile.map(([key, live]) => ({
+      key,
+      name: live.name,
+      url: live.url,
+      ua: live.ua || '',
+      epg: live.epg || '',
+      channelNumber: 0,
       from: 'config',
       disabled: false,
     })),
@@ -154,6 +175,47 @@ function mergeCustomCategories(
   });
 }
 
+function mergeLiveConfig(
+  adminConfig: AdminConfig,
+  fileConfig: ConfigFileStruct
+) {
+  const livesFromFile = Object.entries(fileConfig.lives || []);
+  const currentLiveMap = new Map(
+    (adminConfig.LiveConfig || []).map((l) => [l.key, l])
+  );
+
+  livesFromFile.forEach(([key, live]) => {
+    const existingLive = currentLiveMap.get(key);
+    if (existingLive) {
+      existingLive.name = live.name;
+      existingLive.url = live.url;
+      existingLive.ua = live.ua;
+      existingLive.epg = live.epg;
+      existingLive.from = 'config';
+    } else {
+      currentLiveMap.set(key, {
+        key,
+        name: live.name,
+        url: live.url,
+        ua: live.ua || '',
+        epg: live.epg || '',
+        channelNumber: 0,
+        from: 'config',
+        disabled: false,
+      });
+    }
+  });
+
+  const livesFromFileKeys = new Set(livesFromFile.map(([key]) => key));
+  currentLiveMap.forEach((live) => {
+    if (!livesFromFileKeys.has(live.key)) {
+      live.from = 'custom';
+    }
+  });
+
+  adminConfig.LiveConfig = Array.from(currentLiveMap.values());
+}
+
 function mergeUserConfig(
   adminConfig: AdminConfig,
   users: { username: string; role: 'user' | 'owner' }[]
@@ -197,6 +259,7 @@ async function initConfig() {
       if (adminConfig) {
         mergeSourceConfig(adminConfig, fileConfig);
         mergeCustomCategories(adminConfig, fileConfig);
+        mergeLiveConfig(adminConfig, fileConfig);
         mergeUserConfig(adminConfig, users);
         cachedConfig = adminConfig;
       } else {
@@ -274,5 +337,6 @@ export function configSelfCheck(config: AdminConfig): AdminConfig {
   if (!config.UserConfig) config.UserConfig = defaultConfig.UserConfig;
   if (!config.SourceConfig) config.SourceConfig = [];
   if (!config.CustomCategories) config.CustomCategories = [];
+  if (!config.LiveConfig) config.LiveConfig = [];
   return config;
 }

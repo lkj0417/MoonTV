@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
       DoubanImageProxy,
       ImageProxy,
       DisableYellowFilter,
+      EnableWebLive,
     } = body as {
       SiteName: string;
       Announcement: string;
@@ -50,6 +51,7 @@ export async function POST(request: NextRequest) {
       DoubanImageProxy: string;
       ImageProxy: string;
       DisableYellowFilter: boolean;
+      EnableWebLive?: boolean;
     };
 
     // 参数校验
@@ -94,6 +96,7 @@ export async function POST(request: NextRequest) {
       DoubanImageProxy,
       ImageProxy,
       DisableYellowFilter,
+      EnableWebLive,
     };
 
     // 写入数据库

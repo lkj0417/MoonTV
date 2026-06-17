@@ -3,7 +3,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { getAuthInfoFromCookie } from '@/lib/auth';
+import { setCachedConfig } from '@/lib/config';
 import { db } from '@/lib/db';
+import { deleteCachedLiveChannels, refreshLiveChannels } from '@/lib/live';
 
 export const runtime = 'edge';
 
@@ -67,6 +69,26 @@ export async function POST(req: NextRequest) {
           disabled: false,
         });
 
+        // Refresh channels for the new source
+        try {
+          const nums = await refreshLiveChannels({
+            key: source.key,
+            name: source.name,
+            url: source.url,
+            ua: source.ua || '',
+            epg: source.epg || '',
+            from: 'custom',
+            disabled: false,
+          });
+          const added = currentConfig.LiveConfig.find(
+            (s) => s.key === source.key
+          );
+          if (added) added.channelNumber = nums;
+        } catch (error) {
+          console.error('Failed to refresh channels:', error);
+        }
+
+        setCachedConfig(currentConfig);
         await db.saveAdminConfig(currentConfig);
         return NextResponse.json({
           message: '添加成功',
@@ -100,6 +122,7 @@ export async function POST(req: NextRequest) {
           ...source,
         };
 
+        setCachedConfig(currentConfig);
         await db.saveAdminConfig(currentConfig);
         return NextResponse.json({
           message: '更新成功',
@@ -126,15 +149,119 @@ export async function POST(req: NextRequest) {
           );
         }
 
+        deleteCachedLiveChannels(key);
+
         currentConfig.LiveConfig = currentConfig.LiveConfig.filter(
           (s) => s.key !== key
         );
 
+        setCachedConfig(currentConfig);
         await db.saveAdminConfig(currentConfig);
         return NextResponse.json({
           message: '删除成功',
           liveConfig: currentConfig.LiveConfig,
         });
+      }
+
+      case 'enable': {
+        // 启用直播源
+        const enableSource = currentConfig.LiveConfig.find(
+          (l) => l.key === key
+        );
+        if (!enableSource) {
+          return NextResponse.json({ error: '直播源不存在' }, { status: 404 });
+        }
+        enableSource.disabled = false;
+        setCachedConfig(currentConfig);
+        await db.saveAdminConfig(currentConfig);
+        return NextResponse.json({ message: '启用成功' });
+      }
+
+      case 'disable': {
+        // 禁用直播源
+        const disableSource = currentConfig.LiveConfig.find(
+          (l) => l.key === key
+        );
+        if (!disableSource) {
+          return NextResponse.json({ error: '直播源不存在' }, { status: 404 });
+        }
+        disableSource.disabled = true;
+        setCachedConfig(currentConfig);
+        await db.saveAdminConfig(currentConfig);
+        return NextResponse.json({ message: '禁用成功' });
+      }
+
+      case 'edit': {
+        // 编辑直播源（与 update 不同的是接收独立的字段而非 source 对象）
+        const { key: editKey, name, url, ua, epg } = await req.json();
+        const editSource = currentConfig.LiveConfig.find(
+          (l) => l.key === editKey
+        );
+        if (!editSource) {
+          return NextResponse.json({ error: '直播源不存在' }, { status: 404 });
+        }
+
+        // 配置文件中的直播源不允许编辑
+        if (editSource.from === 'config') {
+          return NextResponse.json(
+            { error: '不能编辑配置文件中的直播源' },
+            { status: 400 }
+          );
+        }
+
+        editSource.name = name as string;
+        editSource.url = url as string;
+        editSource.ua = ua || '';
+        editSource.epg = epg || '';
+
+        // 刷新频道数
+        try {
+          const nums = await refreshLiveChannels(editSource);
+          editSource.channelNumber = nums;
+        } catch (error) {
+          console.error('刷新直播源失败:', error);
+          editSource.channelNumber = 0;
+        }
+
+        setCachedConfig(currentConfig);
+        await db.saveAdminConfig(currentConfig);
+        return NextResponse.json({ message: '编辑成功' });
+      }
+
+      case 'sort': {
+        // 排序直播源
+        const { order } = await req.json();
+
+        if (!Array.isArray(order)) {
+          return NextResponse.json(
+            { error: '排序数据格式错误' },
+            { status: 400 }
+          );
+        }
+
+        // 创建新的排序后的数组
+        const sortedLiveConfig: typeof currentConfig.LiveConfig = [];
+        order.forEach((orderKey: string) => {
+          const sourceItem = currentConfig.LiveConfig?.find(
+            (l) => l.key === orderKey
+          );
+          if (sourceItem) {
+            sortedLiveConfig.push(sourceItem);
+          }
+        });
+
+        // 添加未在排序列表中的直播源（保持原有顺序）
+        currentConfig.LiveConfig.forEach((sourceItem) => {
+          if (!order.includes(sourceItem.key)) {
+            sortedLiveConfig.push(sourceItem);
+          }
+        });
+
+        currentConfig.LiveConfig = sortedLiveConfig;
+
+        setCachedConfig(currentConfig);
+        await db.saveAdminConfig(currentConfig);
+        return NextResponse.json({ message: '排序成功' });
       }
 
       default:

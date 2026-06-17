@@ -66,6 +66,7 @@ interface SiteConfig {
   DoubanImageProxy: string;
   ImageProxy: string;
   DisableYellowFilter: boolean;
+  EnableWebLive?: boolean;
 }
 
 // 视频源数据类型
@@ -1391,6 +1392,7 @@ const SiteConfigComponent = ({ config }: { config: AdminConfig | null }) => {
         DoubanImageProxy: config.SiteConfig.DoubanImageProxy || '',
         ImageProxy: config.SiteConfig.ImageProxy || '',
         DisableYellowFilter: config.SiteConfig.DisableYellowFilter || false,
+        EnableWebLive: config.SiteConfig.EnableWebLive ?? true,
       });
     }
   }, [config]);
