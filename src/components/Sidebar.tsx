@@ -3,7 +3,6 @@
 'use client';
 
 import {
-  CalendarDays,
   Cat,
   Clover,
   Film,
@@ -151,15 +150,16 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
       label: '动漫',
       href: '/douban?type=anime',
     },
-    {
-      icon: CalendarDays,
-      label: '追番表',
-      href: '/anime-schedule',
-    },
+
     {
       icon: Clover,
       label: '综艺',
       href: '/douban?type=show',
+    },
+    {
+      icon: Radio,
+      label: '直播',
+      href: '/live',
     },
   ]);
 

@@ -84,6 +84,7 @@ function createDefaultAdminConfig(
       ImageProxy: process.env.NEXT_PUBLIC_IMAGE_PROXY || '',
       DisableYellowFilter:
         process.env.NEXT_PUBLIC_DISABLE_YELLOW_FILTER === 'true',
+      EnableWebLive: true,
       UserAgent:
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
     },
