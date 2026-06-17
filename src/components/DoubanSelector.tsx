@@ -4,6 +4,9 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 
+import MultiLevelSelector from './MultiLevelSelector';
+import WeekdaySelector from './WeekdaySelector';
+
 interface SelectorOption {
   label: string;
   value: string;
@@ -15,8 +18,8 @@ interface DoubanSelectorProps {
   secondarySelection?: string;
   onPrimaryChange: (value: string) => void;
   onSecondaryChange: (value: string) => void;
-  yearSelection?: string;
-  onYearChange?: (value: string) => void;
+  onMultiLevelChange?: (values: Record<string, string>) => void;
+  onWeekdayChange: (weekday: string) => void;
 }
 
 const DoubanSelector: React.FC<DoubanSelectorProps> = ({
@@ -25,10 +28,9 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
   secondarySelection,
   onPrimaryChange,
   onSecondaryChange,
-  yearSelection,
-  onYearChange,
+  onMultiLevelChange,
+  onWeekdayChange,
 }) => {
-  // 为不同的选择器创建独立的refs和状态
   const primaryContainerRef = useRef<HTMLDivElement>(null);
   const primaryButtonRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [primaryIndicatorStyle, setPrimaryIndicatorStyle] = useState<{
@@ -43,15 +45,14 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
     width: number;
   }>({ left: 0, width: 0 });
 
-  // 电影的一级选择器选项
   const moviePrimaryOptions: SelectorOption[] = [
+    { label: '全部', value: '全部' },
     { label: '热门电影', value: '热门' },
     { label: '最新电影', value: '最新' },
     { label: '豆瓣高分', value: '豆瓣高分' },
     { label: '冷门佳片', value: '冷门佳片' },
   ];
 
-  // 电影的二级选择器选项
   const movieSecondaryOptions: SelectorOption[] = [
     { label: '全部', value: '全部' },
     { label: '华语', value: '华语' },
@@ -60,8 +61,12 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
     { label: '日本', value: '日本' },
   ];
 
-  // 电视剧选择器选项
-  const tvOptions: SelectorOption[] = [
+  const tvPrimaryOptions: SelectorOption[] = [
+    { label: '全部', value: '全部' },
+    { label: '最近热门', value: '最近热门' },
+  ];
+
+  const tvSecondaryOptions: SelectorOption[] = [
     { label: '全部', value: 'tv' },
     { label: '国产', value: 'tv_domestic' },
     { label: '欧美', value: 'tv_american' },
@@ -71,22 +76,27 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
     { label: '纪录片', value: 'tv_documentary' },
   ];
 
-  // 综艺选择器选项
-  const showOptions: SelectorOption[] = [
+  const showPrimaryOptions: SelectorOption[] = [
+    { label: '全部', value: '全部' },
+    { label: '最近热门', value: '最近热门' },
+  ];
+
+  const showSecondaryOptions: SelectorOption[] = [
     { label: '全部', value: 'show' },
     { label: '国内', value: 'show_domestic' },
     { label: '国外', value: 'show_foreign' },
   ];
 
-  // 动漫选择器选项
-  const animeOptions: SelectorOption[] = [
-    { label: '全部', value: 'anime' },
-    { label: '日本动漫', value: 'anime_japanese' },
-    { label: '欧美动漫', value: 'anime_american' },
-    { label: '华语动漫', value: 'anime_chinese' },
+  const animePrimaryOptions: SelectorOption[] = [
+    { label: '每日放送', value: '每日放送' },
+    { label: '番剧', value: '番剧' },
+    { label: '剧场版', value: '剧场版' },
   ];
 
-  // 更新指示器位置的通用函数
+  const handleMultiLevelChange = (values: Record<string, string>) => {
+    onMultiLevelChange?.(values);
+  };
+
   const updateIndicatorPosition = (
     activeIndex: number,
     containerRef: React.RefObject<HTMLDivElement>,
@@ -119,9 +129,7 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
     }
   };
 
-  // 组件挂载时立即计算初始位置
   useEffect(() => {
-    // 主选择器初始位置
     if (type === 'movie') {
       const activeIndex = moviePrimaryOptions.findIndex(
         (opt) =>
@@ -133,9 +141,39 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
         primaryButtonRefs,
         setPrimaryIndicatorStyle
       );
+    } else if (type === 'tv') {
+      const activeIndex = tvPrimaryOptions.findIndex(
+        (opt) => opt.value === (primarySelection || tvPrimaryOptions[1].value)
+      );
+      updateIndicatorPosition(
+        activeIndex,
+        primaryContainerRef,
+        primaryButtonRefs,
+        setPrimaryIndicatorStyle
+      );
+    } else if (type === 'anime') {
+      const activeIndex = animePrimaryOptions.findIndex(
+        (opt) =>
+          opt.value === (primarySelection || animePrimaryOptions[0].value)
+      );
+      updateIndicatorPosition(
+        activeIndex,
+        primaryContainerRef,
+        primaryButtonRefs,
+        setPrimaryIndicatorStyle
+      );
+    } else if (type === 'show') {
+      const activeIndex = showPrimaryOptions.findIndex(
+        (opt) => opt.value === (primarySelection || showPrimaryOptions[1].value)
+      );
+      updateIndicatorPosition(
+        activeIndex,
+        primaryContainerRef,
+        primaryButtonRefs,
+        setPrimaryIndicatorStyle
+      );
     }
 
-    // 副选择器初始位置
     let secondaryActiveIndex = -1;
     if (type === 'movie') {
       secondaryActiveIndex = movieSecondaryOptions.findIndex(
@@ -143,16 +181,14 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
           opt.value === (secondarySelection || movieSecondaryOptions[0].value)
       );
     } else if (type === 'tv') {
-      secondaryActiveIndex = tvOptions.findIndex(
-        (opt) => opt.value === (secondarySelection || tvOptions[0].value)
+      secondaryActiveIndex = tvSecondaryOptions.findIndex(
+        (opt) =>
+          opt.value === (secondarySelection || tvSecondaryOptions[0].value)
       );
     } else if (type === 'show') {
-      secondaryActiveIndex = showOptions.findIndex(
-        (opt) => opt.value === (secondarySelection || showOptions[0].value)
-      );
-    } else if (type === 'anime') {
-      secondaryActiveIndex = animeOptions.findIndex(
-        (opt) => opt.value === (secondarySelection || animeOptions[0].value)
+      secondaryActiveIndex = showSecondaryOptions.findIndex(
+        (opt) =>
+          opt.value === (secondarySelection || showSecondaryOptions[0].value)
       );
     }
 
@@ -164,9 +200,8 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
         setSecondaryIndicatorStyle
       );
     }
-  }, [type]); // 只在type变化时重新计算
+  }, [type]);
 
-  // 监听主选择器变化
   useEffect(() => {
     if (type === 'movie') {
       const activeIndex = moviePrimaryOptions.findIndex(
@@ -179,10 +214,42 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
         setPrimaryIndicatorStyle
       );
       return cleanup;
+    } else if (type === 'tv') {
+      const activeIndex = tvPrimaryOptions.findIndex(
+        (opt) => opt.value === primarySelection
+      );
+      const cleanup = updateIndicatorPosition(
+        activeIndex,
+        primaryContainerRef,
+        primaryButtonRefs,
+        setPrimaryIndicatorStyle
+      );
+      return cleanup;
+    } else if (type === 'anime') {
+      const activeIndex = animePrimaryOptions.findIndex(
+        (opt) => opt.value === primarySelection
+      );
+      const cleanup = updateIndicatorPosition(
+        activeIndex,
+        primaryContainerRef,
+        primaryButtonRefs,
+        setPrimaryIndicatorStyle
+      );
+      return cleanup;
+    } else if (type === 'show') {
+      const activeIndex = showPrimaryOptions.findIndex(
+        (opt) => opt.value === primarySelection
+      );
+      const cleanup = updateIndicatorPosition(
+        activeIndex,
+        primaryContainerRef,
+        primaryButtonRefs,
+        setPrimaryIndicatorStyle
+      );
+      return cleanup;
     }
   }, [primarySelection]);
 
-  // 监听副选择器变化
   useEffect(() => {
     let activeIndex = -1;
     let options: SelectorOption[] = [];
@@ -193,20 +260,15 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
       );
       options = movieSecondaryOptions;
     } else if (type === 'tv') {
-      activeIndex = tvOptions.findIndex(
+      activeIndex = tvSecondaryOptions.findIndex(
         (opt) => opt.value === secondarySelection
       );
-      options = tvOptions;
+      options = tvSecondaryOptions;
     } else if (type === 'show') {
-      activeIndex = showOptions.findIndex(
+      activeIndex = showSecondaryOptions.findIndex(
         (opt) => opt.value === secondarySelection
       );
-      options = showOptions;
-    } else if (type === 'anime') {
-      activeIndex = animeOptions.findIndex(
-        (opt) => opt.value === secondarySelection
-      );
-      options = animeOptions;
+      options = showSecondaryOptions;
     }
 
     if (options.length > 0) {
@@ -220,7 +282,6 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
     }
   }, [secondarySelection]);
 
-  // 渲染胶囊式选择器
   const renderCapsuleSelector = (
     options: SelectorOption[],
     activeValue: string | undefined,
@@ -240,7 +301,6 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
         ref={containerRef}
         className='relative inline-flex bg-gray-200/60 rounded-full p-0.5 sm:p-1 dark:bg-gray-700/60 backdrop-blur-sm'
       >
-        {/* 滑动的白色背景指示器 */}
         {indicatorStyle.width > 0 && (
           <div
             className='absolute top-0.5 bottom-0.5 sm:top-1 sm:bottom-1 bg-white dark:bg-gray-500 rounded-full shadow-sm transition-all duration-300 ease-out'
@@ -274,24 +334,11 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
     );
   };
 
-  // Generate year options for year filter
-  const currentYear = new Date().getFullYear();
-  const yearOptions = React.useMemo(() => {
-    const years: { label: string; value: string }[] = [
-      { label: '全部年份', value: '' },
-    ];
-    for (let y = currentYear; y >= 2000; y--) {
-      years.push({ label: `${y}年`, value: String(y) });
-    }
-    return years;
-  }, []);
-
   return (
     <div className='space-y-4 sm:space-y-6'>
-      {/* 电影类型 - 显示两级选择器 */}
+      {/* Movie */}
       {type === 'movie' && (
         <div className='space-y-3 sm:space-y-4'>
-          {/* 一级选择器 */}
           <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
             <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
               分类
@@ -306,97 +353,182 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
             </div>
           </div>
 
-          {/* 二级选择器 */}
-          <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
-            <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
-              地区
-            </span>
-            <div className='overflow-x-auto'>
-              {renderCapsuleSelector(
-                movieSecondaryOptions,
-                secondarySelection || movieSecondaryOptions[0].value,
-                onSecondaryChange,
-                false
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 电视剧类型 - 只显示一级选择器 */}
-      {type === 'tv' && (
-        <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
-          <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
-            类型
-          </span>
-          <div className='overflow-x-auto'>
-            {renderCapsuleSelector(
-              tvOptions,
-              secondarySelection || tvOptions[0].value,
-              onSecondaryChange,
-              false
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* 综艺类型 - 只显示一级选择器 */}
-      {type === 'show' && (
-        <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
-          <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
-            类型
-          </span>
-          <div className='overflow-x-auto'>
-            {renderCapsuleSelector(
-              showOptions,
-              secondarySelection || showOptions[0].value,
-              onSecondaryChange,
-              false
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* 动漫类型 - 显示地区和年份选择器 */}
-      {type === 'anime' && (
-        <div className='space-y-3 sm:space-y-4'>
-          {/* Year filter */}
-          {onYearChange && (
+          {primarySelection !== '全部' ? (
             <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
               <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
-                年份
+                地区
               </span>
-              <select
-                value={yearSelection || ''}
-                onChange={(e) => onYearChange(e.target.value)}
-                className='px-3 py-1.5 text-xs sm:text-sm rounded-full bg-gray-200/60 dark:bg-gray-700/60 text-gray-700 dark:text-gray-300 border-0 outline-none focus:ring-2 focus:ring-green-500/50 cursor-pointer appearance-none pr-8 bg-no-repeat bg-[right_10px_center]'
-                style={{
-                  backgroundImage:
-                    'url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23666%27 stroke-width=%272%27%3E%3Cpath d=%27m6 9 6 6 6-6%27/%3E%3C/svg%3E")',
-                }}
-              >
-                {yearOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
+              <div className='overflow-x-auto'>
+                {renderCapsuleSelector(
+                  movieSecondaryOptions,
+                  secondarySelection || movieSecondaryOptions[0].value,
+                  onSecondaryChange,
+                  false
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
+              <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
+                筛选
+              </span>
+              <div className='overflow-x-auto'>
+                <MultiLevelSelector
+                  key={`${type}-${primarySelection}`}
+                  onChange={handleMultiLevelChange}
+                  contentType={type}
+                />
+              </div>
             </div>
           )}
-          {/* Region filter */}
+        </div>
+      )}
+
+      {/* TV */}
+      {type === 'tv' && (
+        <div className='space-y-3 sm:space-y-4'>
           <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
             <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
-              地区
+              分类
             </span>
             <div className='overflow-x-auto'>
               {renderCapsuleSelector(
-                animeOptions,
-                secondarySelection || animeOptions[0].value,
-                onSecondaryChange,
-                false
+                tvPrimaryOptions,
+                primarySelection || tvPrimaryOptions[1].value,
+                onPrimaryChange,
+                true
               )}
             </div>
           </div>
+
+          {(primarySelection || tvPrimaryOptions[1].value) === '最近热门' ? (
+            <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
+              <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
+                类型
+              </span>
+              <div className='overflow-x-auto'>
+                {renderCapsuleSelector(
+                  tvSecondaryOptions,
+                  secondarySelection || tvSecondaryOptions[0].value,
+                  onSecondaryChange,
+                  false
+                )}
+              </div>
+            </div>
+          ) : (primarySelection || tvPrimaryOptions[1].value) === '全部' ? (
+            <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
+              <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
+                筛选
+              </span>
+              <div className='overflow-x-auto'>
+                <MultiLevelSelector
+                  key={`${type}-${primarySelection}`}
+                  onChange={handleMultiLevelChange}
+                  contentType={type}
+                />
+              </div>
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      {/* Anime */}
+      {type === 'anime' && (
+        <div className='space-y-3 sm:space-y-4'>
+          <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
+            <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
+              分类
+            </span>
+            <div className='overflow-x-auto'>
+              {renderCapsuleSelector(
+                animePrimaryOptions,
+                primarySelection || animePrimaryOptions[0].value,
+                onPrimaryChange,
+                true
+              )}
+            </div>
+          </div>
+
+          {(primarySelection || animePrimaryOptions[0].value) === '每日放送' ? (
+            <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
+              <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
+                星期
+              </span>
+              <div className='overflow-x-auto'>
+                <WeekdaySelector onWeekdayChange={onWeekdayChange} />
+              </div>
+            </div>
+          ) : (
+            <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
+              <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
+                筛选
+              </span>
+              <div className='overflow-x-auto'>
+                {(primarySelection || animePrimaryOptions[0].value) ===
+                '番剧' ? (
+                  <MultiLevelSelector
+                    key={`anime-tv-${primarySelection}`}
+                    onChange={handleMultiLevelChange}
+                    contentType='anime-tv'
+                  />
+                ) : (
+                  <MultiLevelSelector
+                    key={`anime-movie-${primarySelection}`}
+                    onChange={handleMultiLevelChange}
+                    contentType='anime-movie'
+                  />
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Show */}
+      {type === 'show' && (
+        <div className='space-y-3 sm:space-y-4'>
+          <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
+            <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
+              分类
+            </span>
+            <div className='overflow-x-auto'>
+              {renderCapsuleSelector(
+                showPrimaryOptions,
+                primarySelection || showPrimaryOptions[1].value,
+                onPrimaryChange,
+                true
+              )}
+            </div>
+          </div>
+
+          {(primarySelection || showPrimaryOptions[1].value) === '最近热门' ? (
+            <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
+              <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
+                类型
+              </span>
+              <div className='overflow-x-auto'>
+                {renderCapsuleSelector(
+                  showSecondaryOptions,
+                  secondarySelection || showSecondaryOptions[0].value,
+                  onSecondaryChange,
+                  false
+                )}
+              </div>
+            </div>
+          ) : (primarySelection || showPrimaryOptions[1].value) === '全部' ? (
+            <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
+              <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
+                筛选
+              </span>
+              <div className='overflow-x-auto'>
+                <MultiLevelSelector
+                  key={`${type}-${primarySelection}`}
+                  onChange={handleMultiLevelChange}
+                  contentType={type}
+                />
+              </div>
+            </div>
+          ) : null}
         </div>
       )}
     </div>
