@@ -22,6 +22,7 @@ function DoubanPageClient() {
   const [currentPage, setCurrentPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [yearSelection, setYearSelection] = useState<string>('');
   const [selectorsReady, setSelectorsReady] = useState(false);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadingRef = useRef<HTMLDivElement>(null);
@@ -137,6 +138,7 @@ function DoubanPageClient() {
           type: secondarySelection,
           pageLimit: 25,
           pageStart,
+          year: yearSelection || undefined,
         };
       }
 
@@ -149,7 +151,7 @@ function DoubanPageClient() {
         pageStart,
       };
     },
-    [type, primarySelection, secondarySelection]
+    [type, primarySelection, secondarySelection, yearSelection]
   );
 
   // 防抖的数据加载函数
@@ -171,6 +173,7 @@ function DoubanPageClient() {
             type: selectedCategory.type,
             pageLimit: 25,
             pageStart: 0,
+            year: yearSelection || undefined,
           });
         } else {
           throw new Error('没有找到对应的分类');
@@ -195,6 +198,7 @@ function DoubanPageClient() {
     secondarySelection,
     getRequestParams,
     customCategories,
+    yearSelection,
   ]);
 
   // 只在选择器准备好后才加载数据
@@ -231,6 +235,7 @@ function DoubanPageClient() {
     type,
     primarySelection,
     secondarySelection,
+    yearSelection,
     loadInitialData,
   ]);
 
@@ -256,6 +261,7 @@ function DoubanPageClient() {
                 type: selectedCategory.type,
                 pageLimit: 25,
                 pageStart: currentPage * 25,
+                year: yearSelection || undefined,
               });
             } else {
               throw new Error('没有找到对应的分类');
@@ -287,6 +293,7 @@ function DoubanPageClient() {
     primarySelection,
     secondarySelection,
     customCategories,
+    yearSelection,
   ]);
 
   // 设置滚动监听
@@ -358,6 +365,16 @@ function DoubanPageClient() {
     [secondarySelection]
   );
 
+  const handleYearChange = useCallback(
+    (value: string) => {
+      if (value !== yearSelection) {
+        setLoading(true);
+        setYearSelection(value);
+      }
+    },
+    [yearSelection]
+  );
+
   const getPageTitle = () => {
     // 根据 type 生成标题
     return type === 'movie'
@@ -404,6 +421,8 @@ function DoubanPageClient() {
                 secondarySelection={secondarySelection}
                 onPrimaryChange={handlePrimaryChange}
                 onSecondaryChange={handleSecondaryChange}
+                yearSelection={type === 'anime' ? yearSelection : undefined}
+                onYearChange={type === 'anime' ? handleYearChange : undefined}
               />
             </div>
           ) : (

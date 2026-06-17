@@ -9,6 +9,7 @@ interface DoubanCategoriesParams {
   type: string;
   pageLimit?: number;
   pageStart?: number;
+  year?: string;
 }
 
 interface DoubanCategoryApiResponse {
@@ -53,8 +54,8 @@ async function fetchWithTimeout(
     proxyUrl === 'https://cors-anywhere.com/'
       ? `${proxyUrl}${url}`
       : proxyUrl
-        ? `${proxyUrl}${encodeURIComponent(url)}`
-        : url;
+      ? `${proxyUrl}${encodeURIComponent(url)}`
+      : url;
 
   const fetchOptions: RequestInit = {
     signal: controller.signal,
@@ -85,7 +86,7 @@ export async function fetchDoubanCategories(
   useTencentCDN = false,
   useAliCDN = false
 ): Promise<DoubanResult> {
-  const { kind, category, type, pageLimit = 20, pageStart = 0 } = params;
+  const { kind, category, type, pageLimit = 20, pageStart = 0, year } = params;
 
   // 验证参数
   if (!['tv', 'movie'].includes(kind)) {
@@ -104,11 +105,12 @@ export async function fetchDoubanCategories(
     throw new Error('pageStart 不能小于 0');
   }
 
+  const yearSuffixCat = year ? `&year_range=${year}%2C${year}` : '';
   const target = useTencentCDN
-    ? `https://m.douban.cmliussss.net/rexxar/api/v2/subject/recent_hot/${kind}?start=${pageStart}&limit=${pageLimit}&category=${category}&type=${type}`
+    ? `https://m.douban.cmliussss.net/rexxar/api/v2/subject/recent_hot/${kind}?start=${pageStart}&limit=${pageLimit}&category=${category}&type=${type}${yearSuffixCat}`
     : useAliCDN
-      ? `https://m.douban.cmliussss.com/rexxar/api/v2/subject/recent_hot/${kind}?start=${pageStart}&limit=${pageLimit}&category=${category}&type=${type}`
-      : `https://m.douban.com/rexxar/api/v2/subject/recent_hot/${kind}?start=${pageStart}&limit=${pageLimit}&category=${category}&type=${type}`;
+    ? `https://m.douban.cmliussss.com/rexxar/api/v2/subject/recent_hot/${kind}?start=${pageStart}&limit=${pageLimit}&category=${category}&type=${type}${yearSuffixCat}`
+    : `https://m.douban.com/rexxar/api/v2/subject/recent_hot/${kind}?start=${pageStart}&limit=${pageLimit}&category=${category}&type=${type}${yearSuffixCat}`;
 
   try {
     const response = await fetchWithTimeout(
@@ -170,8 +172,9 @@ export async function getDoubanCategories(
       return fetchDoubanCategories(params, proxyUrl);
     case 'direct':
     default:
+      const yearParam = params.year ? `&year=${params.year}` : '';
       const response = await fetch(
-        `/api/douban/categories?kind=${kind}&category=${category}&type=${type}&limit=${pageLimit}&start=${pageStart}`
+        `/api/douban/categories?kind=${kind}&category=${category}&type=${type}&limit=${pageLimit}&start=${pageStart}${yearParam}`
       );
 
       return response.json();
@@ -183,12 +186,13 @@ interface DoubanListParams {
   type: string;
   pageLimit?: number;
   pageStart?: number;
+  year?: string;
 }
 
 export async function getDoubanList(
   params: DoubanListParams
 ): Promise<DoubanResult> {
-  const { tag, type, pageLimit = 20, pageStart = 0 } = params;
+  const { tag, type, pageLimit = 20, pageStart = 0, year } = params;
   const { proxyType, proxyUrl } = getDoubanProxyConfig();
   switch (proxyType) {
     case 'cors-proxy-zwei':
@@ -203,8 +207,9 @@ export async function getDoubanList(
       return fetchDoubanList(params, proxyUrl);
     case 'direct':
     default:
+      const yearParam = year ? `&year=${year}` : '';
       const response = await fetch(
-        `/api/douban?tag=${tag}&type=${type}&pageSize=${pageLimit}&pageStart=${pageStart}`
+        `/api/douban?tag=${tag}&type=${type}&pageSize=${pageLimit}&pageStart=${pageStart}${yearParam}`
       );
 
       return response.json();
@@ -217,7 +222,7 @@ export async function fetchDoubanList(
   useTencentCDN = false,
   useAliCDN = false
 ): Promise<DoubanResult> {
-  const { tag, type, pageLimit = 20, pageStart = 0 } = params;
+  const { tag, type, pageLimit = 20, pageStart = 0, year } = params;
 
   // 验证参数
   if (!tag || !type) {
@@ -236,11 +241,12 @@ export async function fetchDoubanList(
     throw new Error('pageStart 不能小于 0');
   }
 
+  const yearSuffix = year ? `&year_range=${year},${year}` : '';
   const target = useTencentCDN
-    ? `https://movie.douban.cmliussss.net/j/search_subjects?type=${type}&tag=${tag}&sort=recommend&page_limit=${pageLimit}&page_start=${pageStart}`
+    ? `https://movie.douban.cmliussss.net/j/search_subjects?type=${type}&tag=${tag}&sort=recommend&page_limit=${pageLimit}&page_start=${pageStart}${yearSuffix}`
     : useAliCDN
-      ? `https://movie.douban.cmliussss.com/j/search_subjects?type=${type}&tag=${tag}&sort=recommend&page_limit=${pageLimit}&page_start=${pageStart}`
-      : `https://movie.douban.com/j/search_subjects?type=${type}&tag=${tag}&sort=recommend&page_limit=${pageLimit}&page_start=${pageStart}`;
+    ? `https://movie.douban.cmliussss.com/j/search_subjects?type=${type}&tag=${tag}&sort=recommend&page_limit=${pageLimit}&page_start=${pageStart}${yearSuffix}`
+    : `https://movie.douban.com/j/search_subjects?type=${type}&tag=${tag}&sort=recommend&page_limit=${pageLimit}&page_start=${pageStart}${yearSuffix}`;
 
   try {
     const response = await fetchWithTimeout(

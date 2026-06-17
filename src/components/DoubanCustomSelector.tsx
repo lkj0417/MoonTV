@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 interface CustomCategory {
   name: string;
@@ -16,6 +16,8 @@ interface DoubanCustomSelectorProps {
   secondarySelection?: string;
   onPrimaryChange: (value: string) => void;
   onSecondaryChange: (value: string) => void;
+  yearSelection?: string;
+  onYearChange?: (value: string) => void;
 }
 
 const DoubanCustomSelector: React.FC<DoubanCustomSelectorProps> = ({
@@ -24,8 +26,9 @@ const DoubanCustomSelector: React.FC<DoubanCustomSelectorProps> = ({
   secondarySelection,
   onPrimaryChange,
   onSecondaryChange,
+  yearSelection,
+  onYearChange,
 }) => {
-  // 为不同的选择器创建独立的refs和状态
   const primaryContainerRef = useRef<HTMLDivElement>(null);
   const primaryButtonRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [primaryIndicatorStyle, setPrimaryIndicatorStyle] = useState<{
@@ -40,13 +43,23 @@ const DoubanCustomSelector: React.FC<DoubanCustomSelectorProps> = ({
     width: number;
   }>({ left: 0, width: 0 });
 
-  // 二级选择器滚动容器的ref
   const secondaryScrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // 根据 customCategories 生成一级选择器选项（按 type 分组，电影优先）
+  // Generate year options
+  const currentYear = new Date().getFullYear();
+  const yearOptions = useMemo(() => {
+    const years: { label: string; value: string }[] = [
+      { label: '全部年份', value: '' },
+    ];
+    for (let y = currentYear; y >= 2000; y--) {
+      years.push({ label: `${y}年`, value: String(y) });
+    }
+    return years;
+  }, [currentYear]);
+
+  // Generate primary options based on customCategories
   const primaryOptions = React.useMemo(() => {
     const types = Array.from(new Set(customCategories.map((cat) => cat.type)));
-    // 确保电影类型排在前面
     const sortedTypes = types.sort((a, b) => {
       if (a === 'movie' && b !== 'movie') return -1;
       if (a !== 'movie' && b === 'movie') return 1;
@@ -58,7 +71,7 @@ const DoubanCustomSelector: React.FC<DoubanCustomSelectorProps> = ({
     }));
   }, [customCategories]);
 
-  // 根据选中的一级选项生成二级选择器选项
+  // Generate secondary options based on selected primary
   const secondaryOptions = React.useMemo(() => {
     if (!primarySelection) return [];
     return customCategories
@@ -69,7 +82,6 @@ const DoubanCustomSelector: React.FC<DoubanCustomSelectorProps> = ({
       }));
   }, [customCategories, primarySelection]);
 
-  // 处理二级选择器的鼠标滚轮事件（原生 DOM 事件）
   const handleSecondaryWheel = React.useCallback((e: WheelEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -80,13 +92,11 @@ const DoubanCustomSelector: React.FC<DoubanCustomSelectorProps> = ({
     }
   }, []);
 
-  // 添加二级选择器的鼠标滚轮事件监听器
   useEffect(() => {
     const scrollContainer = secondaryScrollContainerRef.current;
     const capsuleContainer = secondaryContainerRef.current;
 
     if (scrollContainer && capsuleContainer) {
-      // 同时监听滚动容器和胶囊容器的滚轮事件
       scrollContainer.addEventListener('wheel', handleSecondaryWheel, {
         passive: false,
       });
@@ -101,13 +111,11 @@ const DoubanCustomSelector: React.FC<DoubanCustomSelectorProps> = ({
     }
   }, [handleSecondaryWheel]);
 
-  // 当二级选项变化时重新添加事件监听器
   useEffect(() => {
     const scrollContainer = secondaryScrollContainerRef.current;
     const capsuleContainer = secondaryContainerRef.current;
 
     if (scrollContainer && capsuleContainer && secondaryOptions.length > 0) {
-      // 重新添加事件监听器
       scrollContainer.addEventListener('wheel', handleSecondaryWheel, {
         passive: false,
       });
@@ -122,7 +130,6 @@ const DoubanCustomSelector: React.FC<DoubanCustomSelectorProps> = ({
     }
   }, [handleSecondaryWheel, secondaryOptions]);
 
-  // 更新指示器位置的通用函数
   const updateIndicatorPosition = (
     activeIndex: number,
     containerRef: React.RefObject<HTMLDivElement>,
@@ -155,9 +162,7 @@ const DoubanCustomSelector: React.FC<DoubanCustomSelectorProps> = ({
     }
   };
 
-  // 组件挂载时立即计算初始位置
   useEffect(() => {
-    // 主选择器初始位置
     if (primaryOptions.length > 0) {
       const activeIndex = primaryOptions.findIndex(
         (opt) => opt.value === (primarySelection || primaryOptions[0].value)
@@ -170,7 +175,6 @@ const DoubanCustomSelector: React.FC<DoubanCustomSelectorProps> = ({
       );
     }
 
-    // 副选择器初始位置
     if (secondaryOptions.length > 0) {
       const activeIndex = secondaryOptions.findIndex(
         (opt) => opt.value === (secondarySelection || secondaryOptions[0].value)
@@ -182,9 +186,8 @@ const DoubanCustomSelector: React.FC<DoubanCustomSelectorProps> = ({
         setSecondaryIndicatorStyle
       );
     }
-  }, [primaryOptions, secondaryOptions]); // 当选项变化时重新计算
+  }, [primaryOptions, secondaryOptions]);
 
-  // 监听主选择器变化
   useEffect(() => {
     if (primaryOptions.length > 0) {
       const activeIndex = primaryOptions.findIndex(
@@ -200,7 +203,6 @@ const DoubanCustomSelector: React.FC<DoubanCustomSelectorProps> = ({
     }
   }, [primarySelection, primaryOptions]);
 
-  // 监听副选择器变化
   useEffect(() => {
     if (secondaryOptions.length > 0) {
       const activeIndex = secondaryOptions.findIndex(
@@ -216,7 +218,6 @@ const DoubanCustomSelector: React.FC<DoubanCustomSelectorProps> = ({
     }
   }, [secondarySelection, secondaryOptions]);
 
-  // 渲染胶囊式选择器
   const renderCapsuleSelector = (
     options: { label: string; value: string }[],
     activeValue: string | undefined,
@@ -236,7 +237,6 @@ const DoubanCustomSelector: React.FC<DoubanCustomSelectorProps> = ({
         ref={containerRef}
         className='relative inline-flex bg-gray-200/60 rounded-full p-0.5 sm:p-1 dark:bg-gray-700/60 backdrop-blur-sm'
       >
-        {/* 滑动的白色背景指示器 */}
         {indicatorStyle.width > 0 && (
           <div
             className='absolute top-0.5 bottom-0.5 sm:top-1 sm:bottom-1 bg-white dark:bg-gray-500 rounded-full shadow-sm transition-all duration-300 ease-out'
@@ -270,16 +270,39 @@ const DoubanCustomSelector: React.FC<DoubanCustomSelectorProps> = ({
     );
   };
 
-  // 如果没有自定义分类，则不渲染任何内容
   if (!customCategories || customCategories.length === 0) {
     return null;
   }
 
   return (
     <div className='space-y-4 sm:space-y-6'>
-      {/* 两级选择器包装 */}
+      {/* Year filter */}
+      {onYearChange && (
+        <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
+          <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
+            年份
+          </span>
+          <select
+            value={yearSelection || ''}
+            onChange={(e) => onYearChange(e.target.value)}
+            className='px-3 py-1.5 text-xs sm:text-sm rounded-full bg-gray-200/60 dark:bg-gray-700/60 text-gray-700 dark:text-gray-300 border-0 outline-none focus:ring-2 focus:ring-green-500/50 cursor-pointer appearance-none pr-8 bg-no-repeat bg-[right_10px_center]'
+            style={{
+              backgroundImage:
+                'url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23666%27 stroke-width=%272%27%3E%3Cpath d=%27m6 9 6 6 6-6%27/%3E%3C/svg%3E")',
+            }}
+          >
+            {yearOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Two-level selectors */}
       <div className='space-y-3 sm:space-y-4'>
-        {/* 一级选择器 */}
+        {/* Primary selector */}
         <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
           <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
             类型
@@ -294,7 +317,7 @@ const DoubanCustomSelector: React.FC<DoubanCustomSelectorProps> = ({
           </div>
         </div>
 
-        {/* 二级选择器 */}
+        {/* Secondary selector */}
         {secondaryOptions.length > 0 && (
           <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
             <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>

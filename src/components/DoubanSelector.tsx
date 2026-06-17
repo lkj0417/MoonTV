@@ -15,6 +15,8 @@ interface DoubanSelectorProps {
   secondarySelection?: string;
   onPrimaryChange: (value: string) => void;
   onSecondaryChange: (value: string) => void;
+  yearSelection?: string;
+  onYearChange?: (value: string) => void;
 }
 
 const DoubanSelector: React.FC<DoubanSelectorProps> = ({
@@ -23,6 +25,8 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
   secondarySelection,
   onPrimaryChange,
   onSecondaryChange,
+  yearSelection,
+  onYearChange,
 }) => {
   // 为不同的选择器创建独立的refs和状态
   const primaryContainerRef = useRef<HTMLDivElement>(null);
@@ -270,6 +274,18 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
     );
   };
 
+  // Generate year options for year filter
+  const currentYear = new Date().getFullYear();
+  const yearOptions = React.useMemo(() => {
+    const years: { label: string; value: string }[] = [
+      { label: '全部年份', value: '' },
+    ];
+    for (let y = currentYear; y >= 2000; y--) {
+      years.push({ label: `${y}年`, value: String(y) });
+    }
+    return years;
+  }, []);
+
   return (
     <div className='space-y-4 sm:space-y-6'>
       {/* 电影类型 - 显示两级选择器 */}
@@ -341,19 +357,45 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
         </div>
       )}
 
-      {/* 动漫类型 - 只显示一级选择器 */}
+      {/* 动漫类型 - 显示地区和年份选择器 */}
       {type === 'anime' && (
-        <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
-          <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
-            类型
-          </span>
-          <div className='overflow-x-auto'>
-            {renderCapsuleSelector(
-              animeOptions,
-              secondarySelection || animeOptions[0].value,
-              onSecondaryChange,
-              false
-            )}
+        <div className='space-y-3 sm:space-y-4'>
+          {/* Year filter */}
+          {onYearChange && (
+            <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
+              <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
+                年份
+              </span>
+              <select
+                value={yearSelection || ''}
+                onChange={(e) => onYearChange(e.target.value)}
+                className='px-3 py-1.5 text-xs sm:text-sm rounded-full bg-gray-200/60 dark:bg-gray-700/60 text-gray-700 dark:text-gray-300 border-0 outline-none focus:ring-2 focus:ring-green-500/50 cursor-pointer appearance-none pr-8 bg-no-repeat bg-[right_10px_center]'
+                style={{
+                  backgroundImage:
+                    'url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23666%27 stroke-width=%272%27%3E%3Cpath d=%27m6 9 6 6 6-6%27/%3E%3C/svg%3E")',
+                }}
+              >
+                {yearOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {/* Region filter */}
+          <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
+            <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
+              地区
+            </span>
+            <div className='overflow-x-auto'>
+              {renderCapsuleSelector(
+                animeOptions,
+                secondarySelection || animeOptions[0].value,
+                onSecondaryChange,
+                false
+              )}
+            </div>
           </div>
         </div>
       )}

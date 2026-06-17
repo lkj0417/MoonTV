@@ -65,6 +65,7 @@ export async function GET(request: Request) {
   const type = searchParams.get('type');
   const pageLimit = parseInt(searchParams.get('limit') || '20');
   const pageStart = parseInt(searchParams.get('start') || '0');
+  const year = searchParams.get('year') || '';
 
   // 验证参数
   if (!kind || !category || !type) {
@@ -95,7 +96,8 @@ export async function GET(request: Request) {
     );
   }
 
-  const target = `https://m.douban.com/rexxar/api/v2/subject/recent_hot/${kind}?start=${pageStart}&limit=${pageLimit}&category=${category}&type=${type}`;
+  const yearParam = year ? `&year_range=${year}%2C${year}` : '';
+  const target = `https://m.douban.com/rexxar/api/v2/subject/recent_hot/${kind}?start=${pageStart}&limit=${pageLimit}&category=${category}&type=${type}${yearParam}`;
 
   try {
     // 调用豆瓣 API
