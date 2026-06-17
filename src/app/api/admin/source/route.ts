@@ -7,7 +7,9 @@ import { getConfig } from '@/lib/config';
 import { getStorage } from '@/lib/db';
 import { IStorage } from '@/lib/types';
 
-export const runtime = 'edge';
+// This endpoint operates on server-side admin configuration and may require
+// Node.js built-ins. Ensure it's compiled for Node runtime.
+export const runtime = 'nodejs';
 
 // 支持的操作类型
 type Action = 'add' | 'disable' | 'enable' | 'delete' | 'sort';

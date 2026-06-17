@@ -7,7 +7,10 @@ import { getConfig } from '@/lib/config';
 import { getStorage } from '@/lib/db';
 import { IStorage } from '@/lib/types';
 
-export const runtime = 'edge';
+// This route manipulates admin configuration which may rely on Node APIs
+// (loading config from disk). Build failures occur if bundled for the Edge
+// runtime because Node built-ins like `fs` are unavailable. Force Node runtime.
+export const runtime = 'nodejs';
 
 // 支持的操作类型
 type Action = 'add' | 'disable' | 'enable' | 'delete' | 'sort';

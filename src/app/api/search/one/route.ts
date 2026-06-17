@@ -4,7 +4,9 @@ import { getCacheTime, getConfig } from '@/lib/config';
 import { searchFromApi } from '@/lib/downstream';
 import { yellowWords } from '@/lib/yellow';
 
-export const runtime = 'edge';
+// This search endpoint relies on server-side configuration; ensure it's
+// executed in Node runtime so getConfig can access Node-specific APIs if needed.
+export const runtime = 'nodejs';
 
 // OrionTV 兼容接口
 export async function GET(request: Request) {

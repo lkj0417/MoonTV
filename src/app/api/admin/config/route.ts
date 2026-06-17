@@ -6,7 +6,9 @@ import { AdminConfigResult } from '@/lib/admin.types';
 import { getAuthInfoFromCookie } from '@/lib/auth';
 import { getConfig } from '@/lib/config';
 
-export const runtime = 'edge';
+// This route needs Node.js built-ins (via getConfig/loadConfigFile), ensure it
+// runs in the Node runtime so imports like 'fs' are available during build/runtime.
+export const runtime = 'nodejs';
 
 export async function GET(request: NextRequest) {
   const storageType = process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage';

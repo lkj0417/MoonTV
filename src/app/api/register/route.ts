@@ -4,7 +4,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getConfig } from '@/lib/config';
 import { db } from '@/lib/db';
 
-export const runtime = 'edge';
+// Use Node runtime so server-side config access (getConfig) and DB operations
+// don't trigger edge bundler errors for Node built-ins.
+export const runtime = 'nodejs';
 
 // 读取存储类型环境变量，默认 localstorage
 const STORAGE_TYPE =
