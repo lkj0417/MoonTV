@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 
 import { getAnimeSchedule } from '@/lib/anime-schedule';
 
+export const runtime = 'edge';
+
 export async function GET() {
   const schedule = getAnimeSchedule();
 
