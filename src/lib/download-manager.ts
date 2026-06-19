@@ -165,7 +165,11 @@ export class VideoDownloadManager {
       const segment = segments[index];
       const segUrl = `/api/download/segment?url=${encodeURIComponent(
         segment.url
-      )}`;
+      )}${
+        segment.byteRange
+          ? `&byteRange=${encodeURIComponent(segment.byteRange)}`
+          : ''
+      }`;
 
       try {
         const res = await fetch(segUrl, { signal });
@@ -233,7 +237,11 @@ export class VideoDownloadManager {
       try {
         const initUrl = `/api/download/segment?url=${encodeURIComponent(
           initSegment.url
-        )}`;
+        )}${
+          initSegment.byteRange
+            ? `&byteRange=${encodeURIComponent(initSegment.byteRange)}`
+            : ''
+        }`;
         const res = await fetch(initUrl, { signal });
         if (res.ok) {
           initData = new Uint8Array(await res.arrayBuffer());
