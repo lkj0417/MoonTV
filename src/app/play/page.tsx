@@ -24,6 +24,7 @@ import {
 import { SearchResult } from '@/lib/types';
 import { getVideoResolutionFromM3u8, processImageUrl } from '@/lib/utils';
 
+import DownloadButton from '@/components/DownloadButton';
 import EpisodeSelector from '@/components/EpisodeSelector';
 import PageLayout from '@/components/PageLayout';
 
@@ -1911,6 +1912,11 @@ function PlayPageClient() {
                 >
                   <FavoriteIcon filled={favorited} />
                 </button>
+                <DownloadButton
+                  videoUrl={videoUrl}
+                  title={videoTitle}
+                  episode={currentEpisodeIndex + 1}
+                />
               </h1>
 
               {/* 关键信息行 */}
