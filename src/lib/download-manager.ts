@@ -1,3 +1,61 @@
+// 动态加载mux.js
+async function loadMuxJs(): Promise<unknown> {
+  const win = window as unknown as Record<string, unknown>;
+  if (win.muxjs) return win.muxjs;
+
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/mux.js@5.14.0/dist/mux.min.js';
+    const win = window as unknown as Record<string, unknown>;
+    script.onload = () => resolve(win.muxjs);
+    script.onerror = () => reject(new Error('Failed to load mux.js'));
+    document.head.appendChild(script);
+  });
+}
+
+// TS到MP4转换
+async function convertTsToMp4(tsData: Uint8Array): Promise<Uint8Array> {
+  const muxjs = await loadMuxJs();
+  const mux = muxjs as Record<string, Record<string, unknown>>;
+  const Transmuxer = mux.mp4.Transmuxer as new () => {
+    on: (
+      event: string,
+      handler: (segment: { initSegment: Uint8Array; data: Uint8Array }) => void
+    ) => void;
+    push: (data: Uint8Array) => void;
+    flush: () => void;
+  };
+  const transmuxer = new Transmuxer();
+
+  const chunks: Uint8Array[] = [];
+
+  transmuxer.on(
+    'data',
+    (segment: { initSegment: Uint8Array; data: Uint8Array }) => {
+      const data = new Uint8Array(
+        segment.initSegment.byteLength + segment.data.byteLength
+      );
+      data.set(segment.initSegment, 0);
+      data.set(segment.data, segment.initSegment.byteLength);
+      chunks.push(data);
+    }
+  );
+
+  transmuxer.push(tsData);
+  transmuxer.flush();
+
+  // 合并所有chunks
+  const totalLength = chunks.reduce((acc, chunk) => acc + chunk.byteLength, 0);
+  const result = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  return result;
+}
+
 export interface DownloadProgress {
   downloaded: number;
   total: number;
@@ -50,14 +108,14 @@ export class VideoDownloadManager {
     } catch (err) {
       if (signal.aborted) return;
       this._state = 'error';
-      onError?.('\u65E0\u6CD5\u83B7\u53D6\u89C6\u9891\u4FE1\u606F');
+      onError?.('\u65e0\u6cd5\u83b7\u53d6\u89c6\u9891\u4fe1\u606f');
       return;
     }
 
     if (!manifestResponse.ok) {
       this._state = 'error';
       onError?.(
-        '\u89C6\u9891\u6E90\u4E0D\u53EF\u7528\uFF0C\u8BF7\u6362\u6E90\u91CD\u8BD5'
+        '\u89c6\u9891\u6e90\u4e0d\u53ef\u7528\uff0c\u8bf7\u6362\u6e90\u91cd\u8bd5'
       );
       return;
     }
@@ -71,7 +129,7 @@ export class VideoDownloadManager {
       manifestData = await manifestResponse.json();
     } catch {
       this._state = 'error';
-      onError?.('\u89C6\u9891\u683C\u5F0F\u4E0D\u652F\u6301\u4E0B\u8F7D');
+      onError?.('\u89c6\u9891\u683c\u5f0f\u4e0d\u652f\u6301\u4e0b\u8f7d');
       return;
     }
 
@@ -83,7 +141,7 @@ export class VideoDownloadManager {
     if (segments.length === 0) {
       this._state = 'error';
       onError?.(
-        '\u672A\u627E\u5230\u53EF\u4E0B\u8F7D\u7684\u89C6\u9891\u7247\u6BB5'
+        '\u672a\u627e\u5230\u53ef\u4e0b\u8f7d\u7684\u89c6\u9891\u7247\u6bb5'
       );
       return;
     }
@@ -141,8 +199,8 @@ export class VideoDownloadManager {
           hasError = true;
           this._state = 'error';
           onError?.(
-            `\u4E0B\u8F7D\u5931\u8D25: ${
-              err instanceof Error ? err.message : '\u7F51\u7EDC\u9519\u8BEF'
+            `\u4e0b\u8f7d\u5931\u8d25: ${
+              err instanceof Error ? err.message : '\u7f51\u7edc\u9519\u8bef'
             }`
           );
         }
@@ -196,13 +254,52 @@ export class VideoDownloadManager {
     }
 
     const isFmp4 = !!initData;
-    const ext = isFmp4 ? 'mp4' : 'ts';
-    const blob = new Blob(blobParts, {
-      type: isFmp4 ? 'video/mp4' : 'video/mp2t',
-    });
 
-    const filename = `${title} - \u7B2C${episode}\u96C6.${ext}`;
-    triggerDownload(blob, filename);
+    let finalBlob: Blob;
+    let ext: string;
+
+    if (isFmp4) {
+      // 已经是fMP4格式
+      finalBlob = new Blob(blobParts, { type: 'video/mp4' });
+      ext = 'mp4';
+    } else {
+      // TS格式，尝试转换为MP4
+      try {
+        onProgress?.({
+          downloaded: totalSegments,
+          total: totalSegments,
+          percentage: 100,
+          downloadedBytes,
+          speed: 0,
+          remainingTime: 0,
+        });
+
+        // 合并所有TS片段
+        const tsTotalLength = blobParts.reduce(
+          (acc, part) => acc + part.byteLength,
+          0
+        );
+        const tsData = new Uint8Array(tsTotalLength);
+        let offset = 0;
+        for (const part of blobParts) {
+          tsData.set(part, offset);
+          offset += part.byteLength;
+        }
+
+        // 转换为MP4
+        const mp4Data = await convertTsToMp4(tsData);
+        finalBlob = new Blob([mp4Data], { type: 'video/mp4' });
+        ext = 'mp4';
+      } catch (err) {
+        // 转换失败，回退到TS格式
+        // TS to MP4 conversion failed, falling back to TS format
+        finalBlob = new Blob(blobParts, { type: 'video/mp2t' });
+        ext = 'ts';
+      }
+    }
+
+    const filename = `${title} - \u7b2c${episode}\u96c6.${ext}`;
+    triggerDownload(finalBlob, filename);
 
     this._state = 'completed';
     onComplete?.();

@@ -1022,8 +1022,7 @@ function PlayPageClient() {
       !artPlayerRef.current ||
       !currentSourceRef.current ||
       !currentIdRef.current ||
-      !videoTitleRef.current ||
-      !detailRef.current?.source_name
+      !videoTitleRef.current
     ) {
       return;
     }
@@ -1041,7 +1040,7 @@ function PlayPageClient() {
       await savePlayRecord(currentSourceRef.current, currentIdRef.current, {
         title: videoTitleRef.current,
         source_name: detailRef.current?.source_name || '',
-        year: detailRef.current?.year,
+        year: detailRef.current?.year || '',
         cover: detailRef.current?.poster || '',
         index: currentEpisodeIndexRef.current + 1, // 转换为1基索引
         total_episodes: detailRef.current?.episodes.length || 1,
@@ -1080,10 +1079,21 @@ function PlayPageClient() {
     window.addEventListener('beforeunload', handleBeforeUnload);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
+    // 设置定时保存（每30秒）
+    if (saveIntervalRef.current) {
+      clearInterval(saveIntervalRef.current);
+    }
+    saveIntervalRef.current = setInterval(() => {
+      saveCurrentPlayProgress();
+    }, 30000);
+
     return () => {
       // 清理事件监听器
       window.removeEventListener('beforeunload', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (saveIntervalRef.current) {
+        clearInterval(saveIntervalRef.current);
+      }
     };
   }, [currentEpisodeIndex, detail, artPlayerRef.current]);
 
@@ -1130,13 +1140,15 @@ function PlayPageClient() {
 
   // 切换收藏
   const handleToggleFavorite = async () => {
-    if (
-      !videoTitleRef.current ||
-      !detailRef.current ||
-      !currentSourceRef.current ||
-      !currentIdRef.current
-    )
+    // 使用fallback数据，即使detailRef.current为空也能工作
+    const title = videoTitleRef.current || searchTitle;
+    const source = currentSourceRef.current;
+    const id = currentIdRef.current;
+
+    if (!title || !source || !id) {
+      console.warn('收藏所需信息不完整');
       return;
+    }
 
     try {
       if (favorited) {
@@ -1145,10 +1157,10 @@ function PlayPageClient() {
         setFavorited(false);
       } else {
         // 如果未收藏，添加收藏
-        await saveFavorite(currentSourceRef.current, currentIdRef.current, {
-          title: videoTitleRef.current,
+        await saveFavorite(source, id, {
+          title: title,
           source_name: detailRef.current?.source_name || '',
-          year: detailRef.current?.year,
+          year: detailRef.current?.year || searchParams.get('year') || '',
           cover: detailRef.current?.poster || '',
           total_episodes: detailRef.current?.episodes.length || 1,
           save_time: Date.now(),
@@ -1862,6 +1874,15 @@ function PlayPageClient() {
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* 下载按钮 */}
+            <div className='flex justify-end py-2'>
+              <DownloadButton
+                videoUrl={videoUrl}
+                title={videoTitle}
+                episode={currentEpisodeIndex + 1}
+              />
             </div>
 
             {/* 选集和换源 - 在移动端始终显示，在 lg 及以上可折叠 */}
