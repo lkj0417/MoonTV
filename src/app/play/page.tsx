@@ -24,6 +24,7 @@ import {
 import { SearchResult } from '@/lib/types';
 import { getVideoResolutionFromM3u8, processImageUrl } from '@/lib/utils';
 
+import DownloadButton from '@/components/DownloadButton';
 import EpisodeSelector from '@/components/EpisodeSelector';
 import PageLayout from '@/components/PageLayout';
 
@@ -1745,14 +1746,21 @@ function PlayPageClient() {
       <div className='flex flex-col gap-3 py-4 px-5 lg:px-[3rem] 2xl:px-20'>
         {/* 第一行：影片标题 */}
         <div className='py-1'>
-          <h1 className='text-xl font-semibold text-gray-900 dark:text-gray-100'>
-            {videoTitle || '影片标题'}
-            {totalEpisodes > 1 && (
-              <span className='text-gray-500 dark:text-gray-400'>
-                {` > 第 ${currentEpisodeIndex + 1} 集`}
-              </span>
-            )}
-          </h1>
+          <div className='flex items-center justify-between gap-3'>
+            <h1 className='text-xl font-semibold text-gray-900 dark:text-gray-100'>
+              {videoTitle || '影片标题'}
+              {totalEpisodes > 1 && (
+                <span className='text-gray-500 dark:text-gray-400'>
+                  {` > 第 ${currentEpisodeIndex + 1} 集`}
+                </span>
+              )}
+            </h1>
+            <DownloadButton
+              videoUrl={videoUrl}
+              title={videoTitle}
+              episode={currentEpisodeIndex + 1}
+            />
+          </div>
         </div>
         {/* 第二行：播放器和选集 */}
         <div className='space-y-2'>
