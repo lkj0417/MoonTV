@@ -24,7 +24,6 @@ import {
 import { SearchResult } from '@/lib/types';
 import { getVideoResolutionFromM3u8, processImageUrl } from '@/lib/utils';
 
-import DownloadButton from '@/components/DownloadButton';
 import EpisodeSelector from '@/components/EpisodeSelector';
 import PageLayout from '@/components/PageLayout';
 
@@ -1870,16 +1869,6 @@ function PlayPageClient() {
                 )}
               </div>
             </div>
-
-            {/* 下载按钮 */}
-            <div className='flex justify-end py-2'>
-              <DownloadButton
-                videoUrl={videoUrl}
-                title={videoTitle}
-                episode={currentEpisodeIndex + 1}
-              />
-            </div>
-
             {/* 选集和换源 - 在移动端始终显示，在 lg 及以上可折叠 */}
             <div
               className={`h-[300px] lg:h-full md:overflow-hidden transition-all duration-300 ease-in-out ${
