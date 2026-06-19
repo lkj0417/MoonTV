@@ -1767,11 +1767,6 @@ function PlayPageClient() {
                 </span>
               )}
             </h1>
-            <DownloadButton
-              videoUrl={videoUrl}
-              title={videoTitle}
-              episode={currentEpisodeIndex + 1}
-            />
           </div>
         </div>
         {/* 第二行：播放器和选集 */}
