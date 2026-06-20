@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 
-const CURRENT_VERSION = '20260620171120';
+const CURRENT_VERSION = '20260620172434';
 
 // 版本检查状态枚举
 export enum UpdateStatus {

@@ -1,61 +1,3 @@
-// 动态加载mux.js
-async function loadMuxJs(): Promise<unknown> {
-  const win = window as unknown as Record<string, unknown>;
-  if (win.muxjs) return win.muxjs;
-
-  return new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/mux.js@5.14.0/dist/mux.min.js';
-    const win = window as unknown as Record<string, unknown>;
-    script.onload = () => resolve(win.muxjs);
-    script.onerror = () => reject(new Error('Failed to load mux.js'));
-    document.head.appendChild(script);
-  });
-}
-
-// TS到MP4转换
-async function convertTsToMp4(tsData: Uint8Array): Promise<Uint8Array> {
-  const muxjs = await loadMuxJs();
-  const mux = muxjs as Record<string, Record<string, unknown>>;
-  const Transmuxer = mux.mp4.Transmuxer as new () => {
-    on: (
-      event: string,
-      handler: (segment: { initSegment: Uint8Array; data: Uint8Array }) => void
-    ) => void;
-    push: (data: Uint8Array) => void;
-    flush: () => void;
-  };
-  const transmuxer = new Transmuxer();
-
-  const chunks: Uint8Array[] = [];
-
-  transmuxer.on(
-    'data',
-    (segment: { initSegment: Uint8Array; data: Uint8Array }) => {
-      const data = new Uint8Array(
-        segment.initSegment.byteLength + segment.data.byteLength
-      );
-      data.set(segment.initSegment, 0);
-      data.set(segment.data, segment.initSegment.byteLength);
-      chunks.push(data);
-    }
-  );
-
-  transmuxer.push(tsData);
-  transmuxer.flush();
-
-  // 合并所有chunks
-  const totalLength = chunks.reduce((acc, chunk) => acc + chunk.byteLength, 0);
-  const result = new Uint8Array(totalLength);
-  let offset = 0;
-  for (const chunk of chunks) {
-    result.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-
-  return result;
-}
-
 export interface DownloadProgress {
   downloaded: number;
   total: number;
@@ -321,39 +263,30 @@ export class VideoDownloadManager {
       finalBlob = new Blob(blobParts, { type: 'video/mp4' });
       ext = 'mp4';
     } else {
-      // TS格式，尝试转换为MP4
-      try {
-        onProgress?.({
-          downloaded: totalSegments,
-          total: totalSegments,
-          percentage: 100,
-          downloadedBytes,
-          speed: 0,
-          remainingTime: 0,
-        });
+      // TS格式，不进行MP4转换，直接保存为TS以防止音画不同步和合并器导致的时长Bug
+      onProgress?.({
+        downloaded: totalSegments,
+        total: totalSegments,
+        percentage: 100,
+        downloadedBytes,
+        speed: 0,
+        remainingTime: 0,
+      });
 
-        // 合并所有TS片段
-        const tsTotalLength = blobParts.reduce(
-          (acc, part) => acc + part.byteLength,
-          0
-        );
-        const tsData = new Uint8Array(tsTotalLength);
-        let offset = 0;
-        for (const part of blobParts) {
-          tsData.set(part, offset);
-          offset += part.byteLength;
-        }
-
-        // 转换为MP4
-        const mp4Data = await convertTsToMp4(tsData);
-        finalBlob = new Blob([mp4Data], { type: 'video/mp4' });
-        ext = 'mp4';
-      } catch (err) {
-        // 转换失败，回退到TS格式
-        // TS to MP4 conversion failed, falling back to TS format
-        finalBlob = new Blob(blobParts, { type: 'video/mp2t' });
-        ext = 'ts';
+      // 合并所有TS片段
+      const tsTotalLength = blobParts.reduce(
+        (acc, part) => acc + part.byteLength,
+        0
+      );
+      const tsData = new Uint8Array(tsTotalLength);
+      let offset = 0;
+      for (const part of blobParts) {
+        tsData.set(part, offset);
+        offset += part.byteLength;
       }
+
+      finalBlob = new Blob([tsData], { type: 'video/mp2t' });
+      ext = 'ts';
     }
 
     const filename = `${title} - \u7b2c${episode}\u96c6.${ext}`;
