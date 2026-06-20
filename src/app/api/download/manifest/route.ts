@@ -78,23 +78,49 @@ function parsePlaylist(text: string, baseUrl: string, blockAd = false) {
   let finalDuration = duration;
 
   if (blockAd && groups.length > 1) {
-    // Filter out ad groups: usually ad groups are very short compared to the main video.
-    // Find the maximum duration among groups to identify the main video scale.
-    const maxDuration = Math.max(...groups.map((g) => g.totalDuration));
+    // Filter out ad groups:
+    // Sometimes the ad is incredibly long (e.g., 13 hours of casino ads looped) or very short.
+    // The main video is usually the one that has the most segments or a reasonable length (20-60 mins).
+    // Let's identify the main group as the one that is closest to a typical video episode,
+    // or simply the group with the most segments if it's a huge outlier.
+
+    // Sort groups by duration to find the median or look at distribution
+    const sortedGroups = [...groups].sort(
+      (a, b) => b.totalDuration - a.totalDuration
+    );
+
+    // Assume the group with the most segments/duration that isn't a ridiculous outlier (like 13 hours = 46800s) is the main video.
+    // Or, more simply: In anime/TV, the main video is usually 1200s - 3600s.
+    // Ads are either very short (< 150s) or artificially looped to be huge (> 10000s).
+
+    let mainGroup = sortedGroups[0];
+
+    // If the longest group is absurdly long (e.g., > 4 hours = 14400s), maybe the second longest is the real video.
+    if (mainGroup.totalDuration > 14400 && sortedGroups.length > 1) {
+      const plausibleGroups = sortedGroups.filter(
+        (g) => g.totalDuration > 300 && g.totalDuration < 14400
+      );
+      if (plausibleGroups.length > 0) {
+        mainGroup = plausibleGroups[0];
+      }
+    }
+
     finalSegments = [];
     finalDuration = 0;
+
     for (const group of groups) {
-      // If a group is less than 90 seconds and significantly smaller than the main video, it's likely an ad.
+      // Keep only groups that are reasonably close to the main group in duration, or keep ONLY the main group if there's a huge disparity.
+      // Often in these m3u8s, there's exactly 1 main video and multiple small ads, or 1 main video and 1 huge looping ad.
       if (
-        group.totalDuration < 150 &&
-        group.totalDuration < maxDuration * 0.5
+        group === mainGroup ||
+        (group.totalDuration > mainGroup.totalDuration * 0.7 &&
+          group.totalDuration < mainGroup.totalDuration * 1.3)
       ) {
-        continue;
+        finalSegments.push(
+          ...group.segments.map((s) => ({ url: s.url, byteRange: s.byteRange }))
+        );
+        finalDuration += group.totalDuration;
       }
-      finalSegments.push(
-        ...group.segments.map((s) => ({ url: s.url, byteRange: s.byteRange }))
-      );
-      finalDuration += group.totalDuration;
     }
     // Fallback if we accidentally filtered everything
     if (finalSegments.length === 0) {
