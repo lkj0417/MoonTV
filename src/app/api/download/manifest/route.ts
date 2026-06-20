@@ -21,15 +21,12 @@ function parsePlaylist(text: string, baseUrl: string, blockAd = false) {
     .filter((l) => l.length > 0);
 
   let initSegment: { url: string; byteRange?: string } | undefined;
+  const parsedSegments: Array<{
+    url: string;
+    byteRange?: string;
+    duration: number;
+  }> = [];
 
-  interface SegmentGroup {
-    segments: Array<{ url: string; byteRange?: string; duration: number }>;
-    totalDuration: number;
-  }
-
-  const groups: SegmentGroup[] = [{ segments: [], totalDuration: 0 }];
-  let currentGroupIndex = 0;
-  let duration = 0;
   let currentByteRange: string | undefined;
 
   for (let i = 0; i < lines.length; i++) {
@@ -44,11 +41,6 @@ function parsePlaylist(text: string, baseUrl: string, blockAd = false) {
           byteRange: brMatch ? brMatch[1] : undefined,
         };
       }
-    } else if (line.startsWith('#EXT-X-DISCONTINUITY')) {
-      if (groups[currentGroupIndex].segments.length > 0) {
-        groups.push({ segments: [], totalDuration: 0 });
-        currentGroupIndex++;
-      }
     } else if (line.startsWith('#EXT-X-BYTERANGE')) {
       const brMatch = line.match(/#EXT-X-BYTERANGE:(.+)/);
       if (brMatch) {
@@ -56,187 +48,106 @@ function parsePlaylist(text: string, baseUrl: string, blockAd = false) {
       }
     } else if (line.startsWith('#EXTINF')) {
       const durMatch = line.match(/#EXTINF:([\d.]+)/);
-      let segDuration = 0;
-      if (durMatch) {
-        segDuration = parseFloat(durMatch[1]);
-        duration += segDuration;
-      }
+      const segDuration = durMatch ? parseFloat(durMatch[1]) : 0;
       if (i + 1 < lines.length && !lines[i + 1].startsWith('#')) {
-        const seg = {
+        parsedSegments.push({
           url: resolveUrl(baseUrl, lines[i + 1]),
           byteRange: currentByteRange,
           duration: segDuration,
-        };
-        groups[currentGroupIndex].segments.push(seg);
-        groups[currentGroupIndex].totalDuration += segDuration;
+        });
         currentByteRange = undefined;
       }
     }
   }
 
-  let finalSegments: Array<{ url: string; byteRange?: string }> = [];
-  let finalDuration = duration;
+  let finalSegments = parsedSegments;
 
-  // Reconstruct all segments
-  let allSegments = groups
-    .flatMap((g) => g.segments)
-    .map((s) => ({ url: s.url, byteRange: s.byteRange, duration: s.duration }));
-
-  if (blockAd && allSegments.length > 10) {
-    // 1. Group-based filtering (for ads separated by #EXT-X-DISCONTINUITY)
-    if (groups.length > 1) {
-      const sortedGroups = [...groups].sort(
-        (a, b) => b.totalDuration - a.totalDuration
-      );
-      let mainGroup = sortedGroups[0];
-
-      if (mainGroup.totalDuration > 14400 && sortedGroups.length > 1) {
-        const plausibleGroups = sortedGroups.filter(
-          (g) => g.totalDuration > 300 && g.totalDuration < 14400
-        );
-        if (plausibleGroups.length > 0) {
-          mainGroup = plausibleGroups[0];
-        }
-      }
-
-      const validGroups = new Set<SegmentGroup>();
-      for (const group of groups) {
-        if (
-          group === mainGroup ||
-          (group.totalDuration > mainGroup.totalDuration * 0.5 &&
-            group.totalDuration < mainGroup.totalDuration * 1.5)
-        ) {
-          validGroups.add(group);
-        }
-      }
-
-      allSegments = groups
-        .filter((g) => validGroups.has(g))
-        .flatMap((g) => g.segments)
-        .map((s) => ({
-          url: s.url,
-          byteRange: s.byteRange,
-          duration: s.duration,
-        }));
-    }
-
-    // 2. URL outlier detection (for ads injected without #EXT-X-DISCONTINUITY or missed by grouping)
-    const dirCount = new Map<string, number>();
-    for (const seg of allSegments) {
+  if (blockAd && parsedSegments.length > 10) {
+    // 终极去广告算法：完全基于 URL 模式特征提取
+    // 浏览器之所以能去广告，是因为底层的解码器遇到断层的时间戳会自动丢弃切片。
+    // 下载合并器(mux.js)没有容错会硬拼进去，所以我们通过静态特征在下载前斩断广告切片。
+    const extractFeature = (urlStr: string) => {
       try {
-        const urlObj = new URL(seg.url);
-        // Get directory path (e.g. host.com/path/to/)
-        const dir =
-          urlObj.host +
-          urlObj.pathname.substring(0, urlObj.pathname.lastIndexOf('/'));
-        dirCount.set(dir, (dirCount.get(dir) || 0) + 1);
+        const u = new URL(urlStr);
+        const pathParts = u.pathname.split('/');
+        const filename = pathParts.pop() || '';
+        const dir = u.host + pathParts.join('/');
+
+        // 提取文件名前缀，移除所有数字
+        const prefix = filename.replace(/\d+/g, '');
+        return { dir, prefix, combined: dir + '|' + prefix };
       } catch (e) {
-        // ignore
+        return { dir: '', prefix: '', combined: urlStr };
       }
+    };
+
+    const featureCount = new Map<string, number>();
+    for (const seg of parsedSegments) {
+      const feat = extractFeature(seg.url).combined;
+      featureCount.set(feat, (featureCount.get(feat) || 0) + 1);
     }
 
     let maxCount = 0;
-    Array.from(dirCount.values()).forEach((count) => {
+    Array.from(featureCount.values()).forEach((count) => {
       if (count > maxCount) maxCount = count;
     });
 
-    // If there is a dominant directory (e.g. main video), filter out extreme minority directories (< 5% of segments)
-    if (maxCount > allSegments.length * 0.5) {
-      const validDirs = new Set<string>();
-      Array.from(dirCount.entries()).forEach(([dir, count]) => {
-        // A threshold of 5% is safe. Ads are usually just a few segments.
-        if (count >= allSegments.length * 0.05) {
-          validDirs.add(dir);
+    // 如果某个特征占比超过 50%，说明它是绝对的主力切片模式
+    if (maxCount > parsedSegments.length * 0.5) {
+      const validFeatures = new Set<string>();
+      Array.from(featureCount.entries()).forEach(([feat, count]) => {
+        // 容忍多段正片拼接的情况，门槛设为 5%
+        if (count >= parsedSegments.length * 0.05) {
+          validFeatures.add(feat);
         }
       });
 
-      const filteredByUrl = [];
-      let tempDuration = 0;
-      for (const seg of allSegments) {
-        try {
-          const urlObj = new URL(seg.url);
-          const dir =
-            urlObj.host +
-            urlObj.pathname.substring(0, urlObj.pathname.lastIndexOf('/'));
-          if (validDirs.has(dir)) {
-            filteredByUrl.push(seg);
-            tempDuration += seg.duration;
-          }
-        } catch (e) {
-          filteredByUrl.push(seg);
-          tempDuration += seg.duration;
-        }
+      finalSegments = parsedSegments.filter((seg) => {
+        const feat = extractFeature(seg.url).combined;
+        return validFeatures.has(feat);
+      });
+    } else {
+      // 退化策略：如果文件名纯随机没有规律，仅通过目录提取特征
+      const dirCount = new Map<string, number>();
+      for (const seg of parsedSegments) {
+        const dir = extractFeature(seg.url).dir;
+        dirCount.set(dir, (dirCount.get(dir) || 0) + 1);
       }
 
-      // Fallback if we filtered too aggressively
-      if (filteredByUrl.length > 0) {
-        allSegments = filteredByUrl;
-        finalDuration = tempDuration;
-      }
-    }
-
-    // 3. Filename pattern outlier detection
-    if (allSegments.length > 10) {
-      const patternCount = new Map<string, number>();
-      for (const seg of allSegments) {
-        try {
-          const urlObj = new URL(seg.url);
-          const filename = urlObj.pathname.substring(
-            urlObj.pathname.lastIndexOf('/') + 1
-          );
-          const pattern = filename.replace(/\d+/g, ''); // Extract pattern by removing numbers
-          patternCount.set(pattern, (patternCount.get(pattern) || 0) + 1);
-        } catch (e) {
-          // ignore
-        }
-      }
-
-      let maxPatternCount = 0;
-      Array.from(patternCount.values()).forEach((count) => {
-        if (count > maxPatternCount) maxPatternCount = count;
+      let maxDirCount = 0;
+      Array.from(dirCount.values()).forEach((count) => {
+        if (count > maxDirCount) maxDirCount = count;
       });
 
-      if (maxPatternCount > allSegments.length * 0.5) {
-        const validPatterns = new Set<string>();
-        Array.from(patternCount.entries()).forEach(([pattern, count]) => {
-          if (count >= allSegments.length * 0.05) {
-            validPatterns.add(pattern);
+      if (maxDirCount > parsedSegments.length * 0.5) {
+        const validDirs = new Set<string>();
+        Array.from(dirCount.entries()).forEach(([dir, count]) => {
+          if (count >= parsedSegments.length * 0.05) {
+            validDirs.add(dir);
           }
         });
 
-        const filteredByPattern = [];
-        let tempDuration2 = 0;
-        for (const seg of allSegments) {
-          try {
-            const urlObj = new URL(seg.url);
-            const filename = urlObj.pathname.substring(
-              urlObj.pathname.lastIndexOf('/') + 1
-            );
-            const pattern = filename.replace(/\d+/g, '');
-            if (validPatterns.has(pattern)) {
-              filteredByPattern.push(seg);
-              tempDuration2 += seg.duration;
-            }
-          } catch (e) {
-            filteredByPattern.push(seg);
-            tempDuration2 += seg.duration;
-          }
-        }
-
-        if (filteredByPattern.length > 0) {
-          allSegments = filteredByPattern;
-          finalDuration = tempDuration2;
-        }
+        finalSegments = parsedSegments.filter((seg) => {
+          const dir = extractFeature(seg.url).dir;
+          return validDirs.has(dir);
+        });
       }
     }
   }
 
-  finalSegments = allSegments.map((s) => ({
-    url: s.url,
-    byteRange: s.byteRange,
-  }));
+  const finalDuration = finalSegments.reduce(
+    (sum, seg) => sum + seg.duration,
+    0
+  );
 
-  return { segments: finalSegments, initSegment, duration: finalDuration };
+  return {
+    segments: finalSegments.map((s) => ({
+      url: s.url,
+      byteRange: s.byteRange,
+    })),
+    initSegment,
+    duration: finalDuration,
+  };
 }
 
 export async function GET(request: NextRequest) {
