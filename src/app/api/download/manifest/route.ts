@@ -174,6 +174,61 @@ function parsePlaylist(text: string, baseUrl: string, blockAd = false) {
         finalDuration = tempDuration;
       }
     }
+
+    // 3. Filename pattern outlier detection
+    if (allSegments.length > 10) {
+      const patternCount = new Map<string, number>();
+      for (const seg of allSegments) {
+        try {
+          const urlObj = new URL(seg.url);
+          const filename = urlObj.pathname.substring(
+            urlObj.pathname.lastIndexOf('/') + 1
+          );
+          const pattern = filename.replace(/\d+/g, ''); // Extract pattern by removing numbers
+          patternCount.set(pattern, (patternCount.get(pattern) || 0) + 1);
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      let maxPatternCount = 0;
+      Array.from(patternCount.values()).forEach((count) => {
+        if (count > maxPatternCount) maxPatternCount = count;
+      });
+
+      if (maxPatternCount > allSegments.length * 0.5) {
+        const validPatterns = new Set<string>();
+        Array.from(patternCount.entries()).forEach(([pattern, count]) => {
+          if (count >= allSegments.length * 0.05) {
+            validPatterns.add(pattern);
+          }
+        });
+
+        const filteredByPattern = [];
+        let tempDuration2 = 0;
+        for (const seg of allSegments) {
+          try {
+            const urlObj = new URL(seg.url);
+            const filename = urlObj.pathname.substring(
+              urlObj.pathname.lastIndexOf('/') + 1
+            );
+            const pattern = filename.replace(/\d+/g, '');
+            if (validPatterns.has(pattern)) {
+              filteredByPattern.push(seg);
+              tempDuration2 += seg.duration;
+            }
+          } catch (e) {
+            filteredByPattern.push(seg);
+            tempDuration2 += seg.duration;
+          }
+        }
+
+        if (filteredByPattern.length > 0) {
+          allSegments = filteredByPattern;
+          finalDuration = tempDuration2;
+        }
+      }
+    }
   }
 
   finalSegments = allSegments.map((s) => ({
