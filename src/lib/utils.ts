@@ -11,7 +11,7 @@ export function getImageProxyUrl(): string | null {
   // 本地未开启图片代理，则不使用代理
   const enableImageProxy = localStorage.getItem('enableImageProxy');
   if (enableImageProxy !== null) {
-    if (!JSON.parse(enableImageProxy) as boolean) {
+    if (JSON.parse(enableImageProxy) === false) {
       return null;
     }
   }
@@ -35,7 +35,10 @@ export function processImageUrl(originalUrl: string): string {
   if (!originalUrl) return originalUrl;
 
   // 仅处理豆瓣图片代理
-  if (!originalUrl.includes('doubanio.com') && !originalUrl.includes('douban.com')) {
+  if (
+    !originalUrl.includes('doubanio.com') &&
+    !originalUrl.includes('douban.com')
+  ) {
     const proxyUrl = getImageProxyUrl();
     if (!proxyUrl) return originalUrl;
     return `${proxyUrl}${encodeURIComponent(originalUrl)}`;
@@ -130,7 +133,7 @@ export function getDoubanProxyUrl(): string | null {
   // 本地未开启豆瓣代理，则不使用代理
   const enableDoubanProxy = localStorage.getItem('enableDoubanProxy');
   if (enableDoubanProxy !== null) {
-    if (!JSON.parse(enableDoubanProxy) as boolean) {
+    if (JSON.parse(enableDoubanProxy) === false) {
       return null;
     }
   }

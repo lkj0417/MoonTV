@@ -37,7 +37,7 @@ interface VideoCardProps {
   type?: string;
 }
 
-export default function VideoCard({
+export default React.memo(function VideoCard({
   id,
   title = '',
   query = '',
@@ -387,4 +387,4 @@ export default function VideoCard({
       </div>
     </div>
   );
-}
+});

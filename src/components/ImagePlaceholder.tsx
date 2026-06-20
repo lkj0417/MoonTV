@@ -8,33 +8,7 @@ const ImagePlaceholder = ({ aspectRatio }: { aspectRatio: string }) => (
       backgroundSize: '200% 100%',
       animation: 'shine 1.5s infinite',
     }}
-  >
-    <style>{`
-      @keyframes shine {
-        0% { background-position: -200% 0; }
-        100% { background-position: 200% 0; }
-      }
-      
-      /* 亮色模式变量 */
-      :root {
-        --skeleton-color: #f0f0f0;
-        --skeleton-highlight: #e0e0e0;
-      }
-      
-      /* 暗色模式变量 */
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --skeleton-color: #2d2d2d;
-          --skeleton-highlight: #3d3d3d;
-        }
-      }
-      
-      .dark {
-        --skeleton-color: #2d2d2d;
-        --skeleton-highlight: #3d3d3d;
-      }
-    `}</style>
-  </div>
+  />
 );
 
 export { ImagePlaceholder };

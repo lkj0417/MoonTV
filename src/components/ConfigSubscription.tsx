@@ -33,7 +33,7 @@ const AlertModal = ({
   confirmText = '确定',
   onConfirm,
   showConfirm = false,
-  timer
+  timer,
 }: AlertModalProps) => {
   const [isVisible, setIsVisible] = useState(false);
 
@@ -55,11 +55,11 @@ const AlertModal = ({
   const getIcon = () => {
     switch (type) {
       case 'success':
-        return <CheckCircle className="w-12 h-12 text-green-500" />;
+        return <CheckCircle className='w-12 h-12 text-green-500' />;
       case 'error':
-        return <AlertCircle className="w-12 h-12 text-red-500" />;
+        return <AlertCircle className='w-12 h-12 text-red-500' />;
       case 'warning':
-        return <AlertCircle className="w-12 h-12 text-yellow-500" />;
+        return <AlertCircle className='w-12 h-12 text-yellow-500' />;
       default:
         return null;
     }
@@ -79,29 +79,35 @@ const AlertModal = ({
   };
 
   return createPortal(
-    <div className={`fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 transition-opacity duration-200 ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={onClose}>
-      <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full border ${getBgColor()} transition-all duration-200 ${isVisible ? 'scale-100' : 'scale-95'}`} onClick={(e) => e.stopPropagation()}>
-        <div className="p-6 text-center">
-          <div className="flex justify-center mb-4">
-            {getIcon()}
-          </div>
+    <div
+      className={`fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 transition-opacity duration-200 ${
+        isVisible ? 'opacity-100' : 'opacity-0'
+      }`}
+      onClick={onClose}
+    >
+      <div
+        className={`bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full border ${getBgColor()} transition-all duration-200 ${
+          isVisible ? 'scale-100' : 'scale-95'
+        }`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className='p-6 text-center'>
+          <div className='flex justify-center mb-4'>{getIcon()}</div>
 
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+          <h3 className='text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2'>
             {title}
           </h3>
 
           {message && (
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
-              {message}
-            </p>
+            <p className='text-gray-600 dark:text-gray-400 mb-4'>{message}</p>
           )}
 
-          <div className="flex justify-center space-x-3">
+          <div className='flex justify-center space-x-3'>
             {showConfirm && onConfirm ? (
               <>
                 <button
                   onClick={onClose}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+                  className='px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors'
                 >
                   取消
                 </button>
@@ -110,7 +116,7 @@ const AlertModal = ({
                     onConfirm();
                     onClose();
                   }}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                  className='px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors'
                 >
                   {confirmText}
                 </button>
@@ -118,7 +124,7 @@ const AlertModal = ({
             ) : (
               <button
                 onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                className='px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors'
               >
                 确定
               </button>
@@ -131,7 +137,10 @@ const AlertModal = ({
   );
 };
 
-const ConfigSubscription = ({ config, refreshConfig }: ConfigSubscriptionProps) => {
+const ConfigSubscription = ({
+  config,
+  refreshConfig,
+}: ConfigSubscriptionProps) => {
   const [subscriptionUrl, setSubscriptionUrl] = useState('');
   const [autoUpdate, setAutoUpdate] = useState(false);
   const [lastCheckTime, setLastCheckTime] = useState<string>('');
@@ -169,7 +178,7 @@ const ConfigSubscription = ({ config, refreshConfig }: ConfigSubscriptionProps) 
   };
 
   const hideAlert = () => {
-    setAlertModal(prev => ({ ...prev, isOpen: false }));
+    setAlertModal((prev) => ({ ...prev, isOpen: false }));
   };
 
   // 拉取订阅配置
@@ -264,38 +273,41 @@ const ConfigSubscription = ({ config, refreshConfig }: ConfigSubscriptionProps) 
 
   return (
     <>
-      <div className="space-y-6">
+      <div className='space-y-6'>
         {/* 配置订阅区域 */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+        <div className='bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700 shadow-sm'>
+          <div className='flex items-center justify-between mb-6'>
+            <h3 className='text-xl font-semibold text-gray-900 dark:text-gray-100'>
               配置订阅
             </h3>
-            <div className="text-sm text-gray-500 dark:text-gray-400 px-3 py-1.5 rounded-full">
-              最后更新: {lastCheckTime ? new Date(lastCheckTime).toLocaleString('zh-CN') : '从未更新'}
+            <div className='text-sm text-gray-500 dark:text-gray-400 px-3 py-1.5 rounded-full'>
+              最后更新:{' '}
+              {lastCheckTime
+                ? new Date(lastCheckTime).toLocaleString('zh-CN')
+                : '从未更新'}
             </div>
           </div>
 
-          <div className="space-y-6">
+          <div className='space-y-6'>
             {/* 订阅URL输入 */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+              <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3'>
                 订阅URL
               </label>
               <input
-                type="url"
+                type='url'
                 value={subscriptionUrl}
                 onChange={(e) => setSubscriptionUrl(e.target.value)}
-                placeholder="https://example.com/config.json"
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 shadow-sm hover:border-gray-400 dark:hover:border-gray-500"
+                placeholder='https://example.com/config.json'
+                className='w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 shadow-sm hover:border-gray-400 dark:hover:border-gray-500'
               />
-              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              <p className='mt-2 text-xs text-gray-500 dark:text-gray-400'>
                 输入配置文件的订阅地址，要求 JSON 格式，且使用 Base58 编码
               </p>
             </div>
 
             {/* 拉取配置按钮 */}
-            <div className="pt-2">
+            <div className='pt-2'>
               <button
                 onClick={handleFetchConfig}
                 disabled={isLoading || !subscriptionUrl.trim()}
@@ -306,13 +318,13 @@ const ConfigSubscription = ({ config, refreshConfig }: ConfigSubscriptionProps) 
                 }`}
               >
                 {isLoading ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <div className='flex items-center justify-center gap-2'>
+                    <div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin'></div>
                     拉取中...
                   </div>
                 ) : (
-                  <div className="flex items-center justify-center gap-2">
-                    <RefreshCw className="w-4 h-4" />
+                  <div className='flex items-center justify-center gap-2'>
+                    <RefreshCw className='w-4 h-4' />
                     拉取配置
                   </div>
                 )}
@@ -320,17 +332,17 @@ const ConfigSubscription = ({ config, refreshConfig }: ConfigSubscriptionProps) 
             </div>
 
             {/* 自动更新开关 */}
-            <div className="flex items-center justify-between">
+            <div className='flex items-center justify-between'>
               <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <label className='text-sm font-medium text-gray-700 dark:text-gray-300'>
                   自动更新
                 </label>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <p className='text-xs text-gray-500 dark:text-gray-400 mt-1'>
                   启用后系统将定期自动拉取最新配置
                 </p>
               </div>
               <button
-                type="button"
+                type='button'
                 onClick={() => setAutoUpdate(!autoUpdate)}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 ${
                   autoUpdate ? 'bg-green-600' : 'bg-gray-200 dark:bg-gray-700'
@@ -347,23 +359,24 @@ const ConfigSubscription = ({ config, refreshConfig }: ConfigSubscriptionProps) 
         </div>
 
         {/* 配置文件编辑区域 */}
-        <div className="space-y-4">
-          <div className="relative">
+        <div className='space-y-4'>
+          <div className='relative'>
             <textarea
               value={configContent}
               onChange={(e) => setConfigContent(e.target.value)}
               rows={20}
-              placeholder="请输入配置文件内容（JSON 格式）..."
-              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-mono text-sm leading-relaxed resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-gray-400 dark:hover:border-gray-500"
+              placeholder='请输入配置文件内容（JSON 格式）...'
+              className='w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-mono text-sm leading-relaxed resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-gray-400 dark:hover:border-gray-500'
               style={{
-                fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace'
+                fontFamily:
+                  'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
               }}
               spellCheck={false}
             />
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="text-xs text-gray-500 dark:text-gray-400">
+          <div className='flex items-center justify-between'>
+            <div className='text-xs text-gray-500 dark:text-gray-400'>
               支持 JSON 格式，用于配置视频源和自定义分类
             </div>
             <button

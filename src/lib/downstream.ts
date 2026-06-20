@@ -31,7 +31,10 @@ export async function searchFromApi(
     const timeoutId = setTimeout(() => controller.abort(), 8000);
 
     const response = await fetch(apiUrl, {
-      headers: { ...API_CONFIG.search.headers, 'User-Agent': config.SiteConfig.UserAgent || '' },
+      headers: {
+        ...API_CONFIG.search.headers,
+        'User-Agent': config.SiteConfig.UserAgent || '',
+      },
       signal: controller.signal,
     });
 
@@ -118,7 +121,10 @@ export async function searchFromApi(
             );
 
             const pageResponse = await fetch(pageUrl, {
-              headers: { ...API_CONFIG.search.headers, 'User-Agent': config.SiteConfig.UserAgent || '' },
+              headers: {
+                ...API_CONFIG.search.headers,
+                'User-Agent': config.SiteConfig.UserAgent || '',
+              },
               signal: pageController.signal,
             });
 
@@ -204,7 +210,10 @@ export async function getDetailFromApi(
   const timeoutId = setTimeout(() => controller.abort(), 10000);
 
   const response = await fetch(detailUrl, {
-    headers: { ...API_CONFIG.detail.headers, 'User-Agent': config.SiteConfig.UserAgent || '' },
+    headers: {
+      ...API_CONFIG.detail.headers,
+      'User-Agent': config.SiteConfig.UserAgent || '',
+    },
     signal: controller.signal,
   });
 
@@ -280,7 +289,10 @@ async function handleSpecialSourceDetail(
   const timeoutId = setTimeout(() => controller.abort(), 10000);
 
   const response = await fetch(detailUrl, {
-    headers: { ...API_CONFIG.detail.headers, 'User-Agent': config.SiteConfig.UserAgent || '' },
+    headers: {
+      ...API_CONFIG.detail.headers,
+      'User-Agent': config.SiteConfig.UserAgent || '',
+    },
     signal: controller.signal,
   });
 
