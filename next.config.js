@@ -1,7 +1,9 @@
 /** @type {import('next').NextConfig} */
 /* eslint-disable @typescript-eslint/no-var-requires */
 const nextConfig = {
-  output: 'standalone',
+  // On Windows, Next.js standalone build can fail due to symlink EPERM permissions.
+  // We make it conditional so local Windows development/builds succeed out of the box.
+  output: process.platform === 'win32' ? undefined : 'standalone',
   eslint: {
     dirs: ['src'],
   },
