@@ -265,6 +265,48 @@ export class VideoDownloadManager {
     if (initData) {
       blobParts.push(initData);
     }
+
+    // 终极去广告算法第二层：文件物理体积异常检测 (Outlier Detection)
+    // 很多恶性赌场广告是直接在相同 URL 路径下替换了 .ts 文件，且完全没有打 #EXT-X-DISCONTINUITY 标签。
+    // 这种情况下 manifest 层无法防御。
+    // 但因为广告是由不同压制组/不同编码器生成的，其文件码率、分辨率和内容与正常动漫正片完全不同，
+    // 导致广告片段的 .ts 文件大小会与正常的切片文件大小产生“巨大断层”（要么极大，要么极小）。
+    if (options.blockAd && totalSegments > 10) {
+      const sizes = segmentData
+        .map((d) => (d ? d.byteLength : 0))
+        .filter((s) => s > 0);
+      sizes.sort((a, b) => a - b);
+      const medianSize = sizes[Math.floor(sizes.length / 2)];
+
+      let filteredCount = 0;
+      for (let i = 0; i < segmentData.length; i++) {
+        const data = segmentData[i];
+        if (data) {
+          // 允许视频最后几个切片体积较小（因为通常是不满 4 秒的结尾）
+          const isTail = i >= segmentData.length - 3;
+          // 头几个切片可能有额外的头部信息，放宽一点下限
+          const isHead = i <= 2;
+
+          // 如果切片体积大于中位数的 2.5 倍，或者远远小于中位数，判定为恶意注入广告并直接丢弃
+          if (
+            data.byteLength > medianSize * 2.5 ||
+            (!isTail && !isHead && data.byteLength < medianSize * 0.2)
+          ) {
+            // eslint-disable-next-line no-console
+            console.warn(
+              `[BlockAd] 拦截异常切片 #${i}: 体积 ${data.byteLength} bytes (中位数 ${medianSize})`
+            );
+            segmentData[i] = null;
+            filteredCount++;
+          }
+        }
+      }
+      if (filteredCount > 0) {
+        // eslint-disable-next-line no-console
+        console.log(`[BlockAd] 共拦截并清理了 ${filteredCount} 个异常广告切片`);
+      }
+    }
+
     for (const data of segmentData) {
       if (data) blobParts.push(data);
     }
