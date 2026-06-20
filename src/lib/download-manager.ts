@@ -305,12 +305,35 @@ export class VideoDownloadManager {
         // eslint-disable-next-line @typescript-eslint/no-empty-function
         ffmpeg.on('log', () => {});
 
-        await ffmpeg.load({
-          coreURL:
-            'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js',
-          wasmURL:
-            'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm',
-        });
+        // 设置 5 秒加载超时保护，防止 unpkg 挂起或 Cloudflare CDN 代理拦截 Web Worker 导致的线程挂起死锁
+        const loadWithTimeout = async () => {
+          try {
+            await ffmpeg.load({
+              coreURL:
+                'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js',
+              wasmURL:
+                'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm',
+            });
+          } catch (loadErr) {
+            // eslint-disable-next-line no-console
+            console.warn(
+              '从 unpkg 加载 FFmpeg 失败，尝试备用淘宝镜像',
+              loadErr
+            );
+            await ffmpeg.load({
+              coreURL:
+                'https://registry.npmmirror.com/@ffmpeg/core/0.12.6/files/dist/umd/ffmpeg-core.js',
+              wasmURL:
+                'https://registry.npmmirror.com/@ffmpeg/core/0.12.6/files/dist/umd/ffmpeg-core.wasm',
+            });
+          }
+        };
+
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('FFmpeg 加载超时（5s）')), 5000)
+        );
+
+        await Promise.race([loadWithTimeout(), timeoutPromise]);
 
         const inputName = 'input.ts';
         const outputName = 'output.mp4';
