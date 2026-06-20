@@ -77,63 +77,109 @@ function parsePlaylist(text: string, baseUrl: string, blockAd = false) {
   let finalSegments: Array<{ url: string; byteRange?: string }> = [];
   let finalDuration = duration;
 
-  if (blockAd && groups.length > 1) {
-    // Filter out ad groups:
-    // Sometimes the ad is incredibly long (e.g., 13 hours of casino ads looped) or very short.
-    // The main video is usually the one that has the most segments or a reasonable length (20-60 mins).
-    // Let's identify the main group as the one that is closest to a typical video episode,
-    // or simply the group with the most segments if it's a huge outlier.
+  // Reconstruct all segments
+  let allSegments = groups
+    .flatMap((g) => g.segments)
+    .map((s) => ({ url: s.url, byteRange: s.byteRange, duration: s.duration }));
 
-    // Sort groups by duration to find the median or look at distribution
-    const sortedGroups = [...groups].sort(
-      (a, b) => b.totalDuration - a.totalDuration
-    );
-
-    // Assume the group with the most segments/duration that isn't a ridiculous outlier (like 13 hours = 46800s) is the main video.
-    // Or, more simply: In anime/TV, the main video is usually 1200s - 3600s.
-    // Ads are either very short (< 150s) or artificially looped to be huge (> 10000s).
-
-    let mainGroup = sortedGroups[0];
-
-    // If the longest group is absurdly long (e.g., > 4 hours = 14400s), maybe the second longest is the real video.
-    if (mainGroup.totalDuration > 14400 && sortedGroups.length > 1) {
-      const plausibleGroups = sortedGroups.filter(
-        (g) => g.totalDuration > 300 && g.totalDuration < 14400
+  if (blockAd && allSegments.length > 10) {
+    // 1. Group-based filtering (for ads separated by #EXT-X-DISCONTINUITY)
+    if (groups.length > 1) {
+      const sortedGroups = [...groups].sort(
+        (a, b) => b.totalDuration - a.totalDuration
       );
-      if (plausibleGroups.length > 0) {
-        mainGroup = plausibleGroups[0];
-      }
-    }
+      let mainGroup = sortedGroups[0];
 
-    finalSegments = [];
-    finalDuration = 0;
-
-    for (const group of groups) {
-      // Keep only groups that are reasonably close to the main group in duration, or keep ONLY the main group if there's a huge disparity.
-      // Often in these m3u8s, there's exactly 1 main video and multiple small ads, or 1 main video and 1 huge looping ad.
-      if (
-        group === mainGroup ||
-        (group.totalDuration > mainGroup.totalDuration * 0.7 &&
-          group.totalDuration < mainGroup.totalDuration * 1.3)
-      ) {
-        finalSegments.push(
-          ...group.segments.map((s) => ({ url: s.url, byteRange: s.byteRange }))
+      if (mainGroup.totalDuration > 14400 && sortedGroups.length > 1) {
+        const plausibleGroups = sortedGroups.filter(
+          (g) => g.totalDuration > 300 && g.totalDuration < 14400
         );
-        finalDuration += group.totalDuration;
+        if (plausibleGroups.length > 0) {
+          mainGroup = plausibleGroups[0];
+        }
+      }
+
+      const validGroups = new Set<SegmentGroup>();
+      for (const group of groups) {
+        if (
+          group === mainGroup ||
+          (group.totalDuration > mainGroup.totalDuration * 0.5 &&
+            group.totalDuration < mainGroup.totalDuration * 1.5)
+        ) {
+          validGroups.add(group);
+        }
+      }
+
+      allSegments = groups
+        .filter((g) => validGroups.has(g))
+        .flatMap((g) => g.segments)
+        .map((s) => ({
+          url: s.url,
+          byteRange: s.byteRange,
+          duration: s.duration,
+        }));
+    }
+
+    // 2. URL outlier detection (for ads injected without #EXT-X-DISCONTINUITY or missed by grouping)
+    const dirCount = new Map<string, number>();
+    for (const seg of allSegments) {
+      try {
+        const urlObj = new URL(seg.url);
+        // Get directory path (e.g. host.com/path/to/)
+        const dir =
+          urlObj.host +
+          urlObj.pathname.substring(0, urlObj.pathname.lastIndexOf('/'));
+        dirCount.set(dir, (dirCount.get(dir) || 0) + 1);
+      } catch (e) {
+        // ignore
       }
     }
-    // Fallback if we accidentally filtered everything
-    if (finalSegments.length === 0) {
-      finalSegments = groups
-        .flatMap((g) => g.segments)
-        .map((s) => ({ url: s.url, byteRange: s.byteRange }));
-      finalDuration = duration;
+
+    let maxCount = 0;
+    for (const count of dirCount.values()) {
+      if (count > maxCount) maxCount = count;
     }
-  } else {
-    finalSegments = groups
-      .flatMap((g) => g.segments)
-      .map((s) => ({ url: s.url, byteRange: s.byteRange }));
+
+    // If there is a dominant directory (e.g. main video), filter out extreme minority directories (< 5% of segments)
+    if (maxCount > allSegments.length * 0.5) {
+      const validDirs = new Set<string>();
+      for (const [dir, count] of dirCount.entries()) {
+        // A threshold of 5% is safe. Ads are usually just a few segments.
+        if (count >= allSegments.length * 0.05) {
+          validDirs.add(dir);
+        }
+      }
+
+      const filteredByUrl = [];
+      let tempDuration = 0;
+      for (const seg of allSegments) {
+        try {
+          const urlObj = new URL(seg.url);
+          const dir =
+            urlObj.host +
+            urlObj.pathname.substring(0, urlObj.pathname.lastIndexOf('/'));
+          if (validDirs.has(dir)) {
+            filteredByUrl.push(seg);
+            tempDuration += seg.duration;
+          }
+        } catch (e) {
+          filteredByUrl.push(seg);
+          tempDuration += seg.duration;
+        }
+      }
+
+      // Fallback if we filtered too aggressively
+      if (filteredByUrl.length > 0) {
+        allSegments = filteredByUrl;
+        finalDuration = tempDuration;
+      }
+    }
   }
+
+  finalSegments = allSegments.map((s) => ({
+    url: s.url,
+    byteRange: s.byteRange,
+  }));
 
   return { segments: finalSegments, initSegment, duration: finalDuration };
 }
