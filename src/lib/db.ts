@@ -15,6 +15,190 @@ const STORAGE_TYPE =
     | 'upstash'
     | undefined) || 'localstorage';
 
+export class MemoryStorage implements IStorage {
+  private playRecords = new Map<string, Map<string, PlayRecord>>();
+  private favorites = new Map<string, Map<string, Favorite>>();
+  private users = new Map<string, string>(); // username -> password
+  private searchHistories = new Map<string, string[]>();
+  private adminConfig: AdminConfig | null = null;
+  private skipConfigs = new Map<string, Map<string, SkipConfig>>();
+
+  async getPlayRecord(
+    userName: string,
+    key: string
+  ): Promise<PlayRecord | null> {
+    const userMap = this.playRecords.get(userName);
+    return userMap?.get(key) || null;
+  }
+
+  async setPlayRecord(
+    userName: string,
+    key: string,
+    record: PlayRecord
+  ): Promise<void> {
+    if (!this.playRecords.has(userName)) {
+      this.playRecords.set(userName, new Map());
+    }
+    this.playRecords.get(userName)!.set(key, record);
+  }
+
+  async getAllPlayRecords(
+    userName: string
+  ): Promise<{ [key: string]: PlayRecord }> {
+    const userMap = this.playRecords.get(userName);
+    if (!userMap) return {};
+    const res: { [key: string]: PlayRecord } = {};
+    userMap.forEach((v, k) => {
+      res[k] = v;
+    });
+    return res;
+  }
+
+  async deletePlayRecord(userName: string, key: string): Promise<void> {
+    this.playRecords.get(userName)?.delete(key);
+  }
+
+  async getFavorite(userName: string, key: string): Promise<Favorite | null> {
+    const userMap = this.favorites.get(userName);
+    return userMap?.get(key) || null;
+  }
+
+  async setFavorite(
+    userName: string,
+    key: string,
+    favorite: Favorite
+  ): Promise<void> {
+    if (!this.favorites.has(userName)) {
+      this.favorites.set(userName, new Map());
+    }
+    this.favorites.get(userName)!.set(key, favorite);
+  }
+
+  async getAllFavorites(
+    userName: string
+  ): Promise<{ [key: string]: Favorite }> {
+    const userMap = this.favorites.get(userName);
+    if (!userMap) return {};
+    const res: { [key: string]: Favorite } = {};
+    userMap.forEach((v, k) => {
+      res[k] = v;
+    });
+    return res;
+  }
+
+  async deleteFavorite(userName: string, key: string): Promise<void> {
+    this.favorites.get(userName)?.delete(key);
+  }
+
+  async registerUser(userName: string, password: string): Promise<void> {
+    this.users.set(userName, password);
+  }
+
+  async verifyUser(userName: string, password: string): Promise<boolean> {
+    return this.users.get(userName) === password;
+  }
+
+  async checkUserExist(userName: string): Promise<boolean> {
+    return this.users.has(userName);
+  }
+
+  async changePassword(userName: string, newPassword: string): Promise<void> {
+    if (this.users.has(userName)) {
+      this.users.set(userName, newPassword);
+    }
+  }
+
+  async deleteUser(userName: string): Promise<void> {
+    this.users.delete(userName);
+    this.playRecords.delete(userName);
+    this.favorites.delete(userName);
+    this.searchHistories.delete(userName);
+    this.skipConfigs.delete(userName);
+  }
+
+  async getSearchHistory(userName: string): Promise<string[]> {
+    return this.searchHistories.get(userName) || [];
+  }
+
+  async addSearchHistory(userName: string, keyword: string): Promise<void> {
+    const list = this.searchHistories.get(userName) || [];
+    const filtered = list.filter((item) => item !== keyword);
+    filtered.unshift(keyword);
+    if (filtered.length > 20) {
+      filtered.pop();
+    }
+    this.searchHistories.set(userName, filtered);
+  }
+
+  async deleteSearchHistory(userName: string, keyword?: string): Promise<void> {
+    if (!keyword) {
+      this.searchHistories.set(userName, []);
+    } else {
+      const list = this.searchHistories.get(userName) || [];
+      this.searchHistories.set(
+        userName,
+        list.filter((item) => item !== keyword)
+      );
+    }
+  }
+
+  async getAllUsers(): Promise<string[]> {
+    return Array.from(this.users.keys());
+  }
+
+  async getAdminConfig(): Promise<AdminConfig | null> {
+    return this.adminConfig;
+  }
+
+  async setAdminConfig(config: AdminConfig): Promise<void> {
+    this.adminConfig = config;
+  }
+
+  async getSkipConfig(
+    userName: string,
+    source: string,
+    id: string
+  ): Promise<SkipConfig | null> {
+    const key = `${source}+${id}`;
+    const userMap = this.skipConfigs.get(userName);
+    return userMap?.get(key) || null;
+  }
+
+  async setSkipConfig(
+    userName: string,
+    source: string,
+    id: string,
+    config: SkipConfig
+  ): Promise<void> {
+    if (!this.skipConfigs.has(userName)) {
+      this.skipConfigs.set(userName, new Map());
+    }
+    const key = `${source}+${id}`;
+    this.skipConfigs.get(userName)!.set(key, config);
+  }
+
+  async deleteSkipConfig(
+    userName: string,
+    source: string,
+    id: string
+  ): Promise<void> {
+    const key = `${source}+${id}`;
+    this.skipConfigs.get(userName)?.delete(key);
+  }
+
+  async getAllSkipConfigs(
+    userName: string
+  ): Promise<{ [key: string]: SkipConfig }> {
+    const userMap = this.skipConfigs.get(userName);
+    if (!userMap) return {};
+    const res: { [key: string]: SkipConfig } = {};
+    userMap.forEach((v, k) => {
+      res[k] = v;
+    });
+    return res;
+  }
+}
+
 // 创建存储实例
 function createStorage(): IStorage {
   switch (STORAGE_TYPE) {
@@ -27,7 +211,7 @@ function createStorage(): IStorage {
     case 'localstorage':
     default:
       // 默认返回内存实现，保证本地开发可用
-      return null as unknown as IStorage;
+      return new MemoryStorage();
   }
 }
 

@@ -61,7 +61,8 @@ export async function GET(request: Request) {
         m3u8Content,
         baseUrl,
         request,
-        allowCORS
+        allowCORS,
+        source || ''
       );
 
       const headers = new Headers();
@@ -121,7 +122,8 @@ function rewriteM3U8Content(
   content: string,
   baseUrl: string,
   req: Request,
-  allowCORS: boolean
+  allowCORS: boolean,
+  source: string
 ) {
   const referer = req.headers.get('referer');
   let protocol = 'http';
@@ -148,19 +150,21 @@ function rewriteM3U8Content(
       const resolvedUrl = resolveUrl(baseUrl, line);
       const proxyUrl = allowCORS
         ? resolvedUrl
-        : `${proxyBase}/segment?url=${encodeURIComponent(resolvedUrl)}`;
+        : `${proxyBase}/segment?url=${encodeURIComponent(
+            resolvedUrl
+          )}&source=${source}`;
       rewrittenLines.push(proxyUrl);
       continue;
     }
 
     // Handle EXT-X-MAP tag URI
     if (line.startsWith('#EXT-X-MAP:')) {
-      line = rewriteMapUri(line, baseUrl, proxyBase);
+      line = rewriteMapUri(line, baseUrl, proxyBase, source);
     }
 
     // Handle EXT-X-KEY tag URI
     if (line.startsWith('#EXT-X-KEY:')) {
-      line = rewriteKeyUri(line, baseUrl, proxyBase);
+      line = rewriteKeyUri(line, baseUrl, proxyBase, source);
     }
 
     // Handle nested M3U8 files (EXT-X-STREAM-INF)
@@ -173,7 +177,7 @@ function rewriteM3U8Content(
           const resolvedUrl = resolveUrl(baseUrl, nextLine);
           const proxyUrl = `${proxyBase}/m3u8?url=${encodeURIComponent(
             resolvedUrl
-          )}`;
+          )}&source=${source}`;
           rewrittenLines.push(proxyUrl);
         } else {
           rewrittenLines.push(nextLine);
@@ -188,25 +192,37 @@ function rewriteM3U8Content(
   return rewrittenLines.join('\n');
 }
 
-function rewriteMapUri(line: string, baseUrl: string, proxyBase: string) {
+function rewriteMapUri(
+  line: string,
+  baseUrl: string,
+  proxyBase: string,
+  source: string
+) {
   const uriMatch = line.match(/URI="([^"]+)"/);
   if (uriMatch) {
     const originalUri = uriMatch[1];
     const resolvedUrl = resolveUrl(baseUrl, originalUri);
     const proxyUrl = `${proxyBase}/segment?url=${encodeURIComponent(
       resolvedUrl
-    )}`;
+    )}&source=${source}`;
     return line.replace(uriMatch[0], `URI="${proxyUrl}"`);
   }
   return line;
 }
 
-function rewriteKeyUri(line: string, baseUrl: string, proxyBase: string) {
+function rewriteKeyUri(
+  line: string,
+  baseUrl: string,
+  proxyBase: string,
+  source: string
+) {
   const uriMatch = line.match(/URI="([^"]+)"/);
   if (uriMatch) {
     const originalUri = uriMatch[1];
     const resolvedUrl = resolveUrl(baseUrl, originalUri);
-    const proxyUrl = `${proxyBase}/key?url=${encodeURIComponent(resolvedUrl)}`;
+    const proxyUrl = `${proxyBase}/key?url=${encodeURIComponent(
+      resolvedUrl
+    )}&source=${source}`;
     return line.replace(uriMatch[0], `URI="${proxyUrl}"`);
   }
   return line;
