@@ -136,19 +136,19 @@ function parsePlaylist(text: string, baseUrl: string, blockAd = false) {
     }
 
     let maxCount = 0;
-    for (const count of dirCount.values()) {
+    Array.from(dirCount.values()).forEach((count) => {
       if (count > maxCount) maxCount = count;
-    }
+    });
 
     // If there is a dominant directory (e.g. main video), filter out extreme minority directories (< 5% of segments)
     if (maxCount > allSegments.length * 0.5) {
       const validDirs = new Set<string>();
-      for (const [dir, count] of dirCount.entries()) {
+      Array.from(dirCount.entries()).forEach(([dir, count]) => {
         // A threshold of 5% is safe. Ads are usually just a few segments.
         if (count >= allSegments.length * 0.05) {
           validDirs.add(dir);
         }
-      }
+      });
 
       const filteredByUrl = [];
       let tempDuration = 0;
