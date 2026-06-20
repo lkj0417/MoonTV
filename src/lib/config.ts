@@ -139,7 +139,7 @@ function mergeSourceConfig(
     adminConfig.SourceConfig.map((s) => [s.key, s])
   );
   Object.entries(fileConfig.api_site).forEach(([key, site]) => {
-    sourceConfigMap.set(key, { ...site, from: 'config', disabled: false });
+    sourceConfigMap.set(key, { ...site, key, from: 'config', disabled: false });
   });
   adminConfig.SourceConfig = Array.from(sourceConfigMap.values());
   adminConfig.SourceConfig.forEach((source) => {

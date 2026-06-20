@@ -25,6 +25,181 @@ type DownloadState =
   | 'error'
   | 'cancelled';
 
+// ---------------- 客户端备用 HLS 直连解析器 ----------------
+function resolveUrl(baseUrl: string, relativeUrl: string): string {
+  if (relativeUrl.startsWith('http://') || relativeUrl.startsWith('https://')) {
+    return relativeUrl;
+  }
+  try {
+    const url = new URL(baseUrl);
+    if (relativeUrl.startsWith('/')) {
+      return url.origin + relativeUrl;
+    }
+    const basePath = url.pathname.substring(
+      0,
+      url.pathname.lastIndexOf('/') + 1
+    );
+    return url.origin + basePath + relativeUrl;
+  } catch {
+    return relativeUrl;
+  }
+}
+
+function parsePlaylist(text: string, baseUrl: string, blockAd = false) {
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+
+  let initSegment: { url: string; byteRange?: string } | undefined;
+
+  interface SegmentGroup {
+    segments: Array<{ url: string; byteRange?: string; duration: number }>;
+    totalDuration: number;
+  }
+
+  const groups: SegmentGroup[] = [{ segments: [], totalDuration: 0 }];
+  let currentGroupIndex = 0;
+  let currentByteRange: string | undefined;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    if (line.startsWith('#EXT-X-MAP')) {
+      const uriMatch = line.match(/URI="([^"]+)"/);
+      const brMatch = line.match(/BYTERANGE="([^"]+)"/);
+      if (uriMatch) {
+        initSegment = {
+          url: resolveUrl(baseUrl, uriMatch[1]),
+          byteRange: brMatch ? brMatch[1] : undefined,
+        };
+      }
+    } else if (line.startsWith('#EXT-X-DISCONTINUITY')) {
+      if (groups[currentGroupIndex].segments.length > 0) {
+        groups.push({ segments: [], totalDuration: 0 });
+        currentGroupIndex++;
+      }
+    } else if (line.startsWith('#EXT-X-BYTERANGE')) {
+      const brMatch = line.match(/#EXT-X-BYTERANGE:(.+)/);
+      if (brMatch) {
+        currentByteRange = brMatch[1];
+      }
+    } else if (line.startsWith('#EXTINF')) {
+      const durMatch = line.match(/#EXTINF:([\d.]+)/);
+      const segDuration = durMatch ? parseFloat(durMatch[1]) : 0;
+      if (i + 1 < lines.length && !lines[i + 1].startsWith('#')) {
+        groups[currentGroupIndex].segments.push({
+          url: resolveUrl(baseUrl, lines[i + 1]),
+          byteRange: currentByteRange,
+          duration: segDuration,
+        });
+        groups[currentGroupIndex].totalDuration += segDuration;
+        currentByteRange = undefined;
+      }
+    }
+  }
+
+  let finalSegments: Array<{ url: string; byteRange?: string }> = [];
+  let finalDuration = 0;
+
+  if (blockAd && groups.length > 1) {
+    const sortedGroups = [...groups].sort(
+      (a, b) => b.totalDuration - a.totalDuration
+    );
+    let mainGroup = sortedGroups[0];
+
+    if (mainGroup.totalDuration > 14400 && sortedGroups.length > 1) {
+      const plausibleGroups = sortedGroups.filter(
+        (g) => g.totalDuration > 300 && g.totalDuration < 14400
+      );
+      if (plausibleGroups.length > 0) {
+        mainGroup = plausibleGroups[0];
+      }
+    }
+
+    for (const group of groups) {
+      if (
+        group === mainGroup ||
+        group.totalDuration > mainGroup.totalDuration * 0.5
+      ) {
+        finalSegments.push(
+          ...group.segments.map((s) => ({ url: s.url, byteRange: s.byteRange }))
+        );
+        finalDuration += group.totalDuration;
+      }
+    }
+
+    if (finalSegments.length === 0) {
+      finalSegments = groups
+        .flatMap((g) => g.segments)
+        .map((s) => ({ url: s.url, byteRange: s.byteRange }));
+      finalDuration = groups.reduce((acc, g) => acc + g.totalDuration, 0);
+    }
+  } else {
+    finalSegments = groups
+      .flatMap((g) => g.segments)
+      .map((s) => ({ url: s.url, byteRange: s.byteRange }));
+    finalDuration = groups.reduce((acc, g) => acc + g.totalDuration, 0);
+  }
+
+  return { segments: finalSegments, initSegment, duration: finalDuration };
+}
+
+async function fetchAndParseManifestClientSide(
+  videoUrl: string,
+  blockAd = false
+): Promise<{
+  segments: Array<{ url: string; byteRange?: string }>;
+  initSegment?: { url: string; byteRange?: string };
+  duration: number;
+}> {
+  const response = await fetch(videoUrl);
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+  const text = await response.text();
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+
+  if (!lines[0]?.startsWith('#EXTM3U')) {
+    throw new Error('Not a valid M3U8 file');
+  }
+
+  const isMaster = lines.some((l) => l.startsWith('#EXT-X-STREAM-INF'));
+
+  if (isMaster) {
+    let bestUrl = '';
+    let bestBandwidth = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].startsWith('#EXT-X-STREAM-INF')) {
+        const bwMatch = lines[i].match(/BANDWIDTH=(\d+)/);
+        const bw = bwMatch ? parseInt(bwMatch[1], 10) : 0;
+        if (bw >= bestBandwidth && i + 1 < lines.length) {
+          bestBandwidth = bw;
+          bestUrl = lines[i + 1];
+        }
+      }
+    }
+
+    if (!bestUrl) {
+      throw new Error('No stream found in master playlist');
+    }
+
+    const mediaUrl = resolveUrl(videoUrl, bestUrl);
+    const mediaResponse = await fetch(mediaUrl);
+    if (!mediaResponse.ok) {
+      throw new Error(`HTTP ${mediaResponse.status}`);
+    }
+    const mediaText = await mediaResponse.text();
+    return parsePlaylist(mediaText, mediaUrl, blockAd);
+  }
+
+  return parsePlaylist(text, videoUrl, blockAd);
+}
+
 export class VideoDownloadManager {
   private abortController: AbortController | null = null;
   private _state: DownloadState = 'idle';
@@ -52,41 +227,49 @@ export class VideoDownloadManager {
       videoUrl
     )}${blockAd ? '&blockAd=true' : ''}`;
 
-    let manifestResponse: Response;
-    try {
-      manifestResponse = await fetch(manifestUrl, { signal });
-    } catch (err) {
-      if (signal.aborted) return;
-      this._state = 'error';
-      onError?.('\u65e0\u6cd5\u83b7\u53d6\u89c6\u9891\u4fe1\u606f');
-      return;
-    }
-
-    if (!manifestResponse.ok) {
-      this._state = 'error';
-      onError?.(
-        '\u89c6\u9891\u6e90\u4e0d\u53ef\u7528\uff0c\u8bf7\u6362\u6e90\u91cd\u8bd5'
-      );
-      return;
-    }
-
     let manifestData: {
       segments?: Array<{ url: string; byteRange?: string }>;
       initSegment?: { url: string; byteRange?: string };
       duration?: number;
-    };
+    } | null = null;
+
     try {
-      manifestData = await manifestResponse.json();
-    } catch {
-      this._state = 'error';
-      onError?.('\u89c6\u9891\u683c\u5f0f\u4e0d\u652f\u6301\u4e0b\u8f7d');
-      return;
+      const manifestResponse = await fetch(manifestUrl, { signal });
+      if (manifestResponse.ok) {
+        manifestData = await manifestResponse.json();
+      }
+    } catch (err) {
+      // 捕获异常，准备进入浏览器直连 fallback
+    }
+
+    if (!manifestData) {
+      // 备用方案：如果服务端下载解析 API 报错（例如服务器 IP 被视频资源站屏蔽），则尝试直接由浏览器发起跨域直连下载解析
+      // eslint-disable-next-line no-console
+      console.warn(
+        '服务端获取 M3U8 列表失败（可能是服务器 IP 被对方屏蔽），正在尝试浏览器直连解析...',
+        videoUrl
+      );
+      try {
+        manifestData = await fetchAndParseManifestClientSide(videoUrl, blockAd);
+      } catch (clientErr) {
+        if (signal.aborted) return;
+        this._state = 'error';
+        // eslint-disable-next-line no-console
+        console.error(
+          '浏览器直连解析也失败（通常由于跨域策略限制）:',
+          clientErr
+        );
+        onError?.(
+          '\u89c6\u9891\u6e90\u4e0d\u53ef\u7528\uff0c\u8bf7\u6362\u6e90\u91cd\u8bd5'
+        );
+        return;
+      }
     }
 
     const segments: Array<{ url: string; byteRange?: string }> =
-      manifestData.segments || [];
+      manifestData?.segments || [];
     const initSegment: { url: string; byteRange?: string } | undefined =
-      manifestData.initSegment;
+      manifestData?.initSegment;
 
     if (segments.length === 0) {
       this._state = 'error';
@@ -122,9 +305,17 @@ export class VideoDownloadManager {
       }`;
 
       try {
-        const res = await fetch(segUrl, { signal });
+        let res = await fetch(segUrl, { signal });
         if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
+          // 备用方案：如果服务端分片下载代理失败（如 Cloudflare Edge 被防火墙屏蔽），尝试由浏览器客户端发起跨域直连下载
+          const headers: Record<string, string> = {};
+          if (segment.byteRange) {
+            headers['Range'] = `bytes=${segment.byteRange}`;
+          }
+          res = await fetch(segment.url, { signal, headers });
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+          }
         }
         const data = new Uint8Array(await res.arrayBuffer());
         segmentData[index] = data;
@@ -192,7 +383,14 @@ export class VideoDownloadManager {
             ? `&byteRange=${encodeURIComponent(initSegment.byteRange)}`
             : ''
         }`;
-        const res = await fetch(initUrl, { signal });
+        let res = await fetch(initUrl, { signal });
+        if (!res.ok) {
+          const headers: Record<string, string> = {};
+          if (initSegment.byteRange) {
+            headers['Range'] = `bytes=${initSegment.byteRange}`;
+          }
+          res = await fetch(initSegment.url, { signal, headers });
+        }
         if (res.ok) {
           initData = new Uint8Array(await res.arrayBuffer());
         }
