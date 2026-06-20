@@ -263,17 +263,16 @@ export class VideoDownloadManager {
       finalBlob = new Blob(blobParts, { type: 'video/mp4' });
       ext = 'mp4';
     } else {
-      // TS格式，不进行MP4转换，直接保存为TS以防止音画不同步和合并器导致的时长Bug
+      // TS格式，尝试使用原生的 mp4 转换
       onProgress?.({
         downloaded: totalSegments,
         total: totalSegments,
-        percentage: 100,
+        percentage: 95, // 留 5% 给本地转换
         downloadedBytes,
         speed: 0,
         remainingTime: 0,
       });
 
-      // 合并所有TS片段
       const tsTotalLength = blobParts.reduce(
         (acc, part) => acc + part.byteLength,
         0
@@ -285,8 +284,54 @@ export class VideoDownloadManager {
         offset += part.byteLength;
       }
 
-      finalBlob = new Blob([tsData], { type: 'video/mp2t' });
-      ext = 'ts';
+      try {
+        // 通过原生的 Blob 和 MediaRecorder 处理，或者通过动态载入 ffmpeg.wasm 来处理
+        // 考虑到在前端完全安全地转复用 TS 到 MP4 且保持音画同步，目前唯一不丢帧、不坏时间戳的完美方案是 FFmpeg.wasm。
+        // 为了不增加首次页面加载负担，我们在这里动态引入。
+        onProgress?.({
+          downloaded: totalSegments,
+          total: totalSegments,
+          percentage: 98,
+          downloadedBytes,
+          speed: 0,
+          remainingTime: 0,
+        });
+
+        const { FFmpeg } = await import('@ffmpeg/ffmpeg');
+
+        const ffmpeg = new FFmpeg();
+
+        // 捕获日志（可选）
+        // eslint-disable-next-line @typescript-eslint/no-empty-function
+        ffmpeg.on('log', () => {});
+
+        await ffmpeg.load({
+          coreURL:
+            'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js',
+          wasmURL:
+            'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm',
+        });
+
+        const inputName = 'input.ts';
+        const outputName = 'output.mp4';
+
+        await ffmpeg.writeFile(inputName, tsData);
+
+        // 仅仅是容器转换（复用，不重新编码，极快且无损）
+        await ffmpeg.exec(['-i', inputName, '-c', 'copy', outputName]);
+
+        const mp4Data = await ffmpeg.readFile(outputName);
+        finalBlob = new Blob([mp4Data], { type: 'video/mp4' });
+        ext = 'mp4';
+
+        // 释放内存
+        ffmpeg.terminate();
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn('FFmpeg 转换失败，退回为 TS 格式保存', err);
+        finalBlob = new Blob([tsData], { type: 'video/mp2t' });
+        ext = 'ts';
+      }
     }
 
     const filename = `${title} - \u7b2c${episode}\u96c6.${ext}`;
