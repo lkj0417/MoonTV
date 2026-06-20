@@ -9,12 +9,14 @@ interface DownloadButtonProps {
   videoUrl: string;
   title: string;
   episode: number;
+  blockAdEnabled?: boolean;
 }
 
 export default function DownloadButton({
   videoUrl,
   title,
   episode,
+  blockAdEnabled,
 }: DownloadButtonProps) {
   const [downloading, setDownloading] = useState(false);
   const [progressText, setProgressText] = useState('');
@@ -54,6 +56,7 @@ export default function DownloadButton({
         videoUrl,
         title,
         episode,
+        blockAd: blockAdEnabled,
         onProgress: (progress: DownloadProgress) => {
           setProgressText(
             `下载中 ${progress.percentage}% (${progress.downloaded}/${progress.total})`

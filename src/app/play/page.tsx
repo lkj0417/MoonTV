@@ -1916,6 +1916,7 @@ function PlayPageClient() {
                   videoUrl={videoUrl}
                   title={videoTitle}
                   episode={currentEpisodeIndex + 1}
+                  blockAdEnabled={blockAdEnabled}
                 />
               </h1>
 

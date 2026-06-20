@@ -14,14 +14,21 @@ function resolveUrl(baseUrl: string, relativeUrl: string): string {
   return url.origin + basePath + relativeUrl;
 }
 
-function parsePlaylist(text: string, baseUrl: string) {
+function parsePlaylist(text: string, baseUrl: string, blockAd = false) {
   const lines = text
     .split(/\r?\n/)
     .map((l) => l.trim())
     .filter((l) => l.length > 0);
 
   let initSegment: { url: string; byteRange?: string } | undefined;
-  const segments: Array<{ url: string; byteRange?: string }> = [];
+
+  interface SegmentGroup {
+    segments: Array<{ url: string; byteRange?: string; duration: number }>;
+    totalDuration: number;
+  }
+
+  const groups: SegmentGroup[] = [{ segments: [], totalDuration: 0 }];
+  let currentGroupIndex = 0;
   let duration = 0;
   let currentByteRange: string | undefined;
 
@@ -37,6 +44,11 @@ function parsePlaylist(text: string, baseUrl: string) {
           byteRange: brMatch ? brMatch[1] : undefined,
         };
       }
+    } else if (line.startsWith('#EXT-X-DISCONTINUITY')) {
+      if (groups[currentGroupIndex].segments.length > 0) {
+        groups.push({ segments: [], totalDuration: 0 });
+        currentGroupIndex++;
+      }
     } else if (line.startsWith('#EXT-X-BYTERANGE')) {
       const brMatch = line.match(/#EXT-X-BYTERANGE:(.+)/);
       if (brMatch) {
@@ -44,25 +56,66 @@ function parsePlaylist(text: string, baseUrl: string) {
       }
     } else if (line.startsWith('#EXTINF')) {
       const durMatch = line.match(/#EXTINF:([\d.]+)/);
+      let segDuration = 0;
       if (durMatch) {
-        duration += parseFloat(durMatch[1]);
+        segDuration = parseFloat(durMatch[1]);
+        duration += segDuration;
       }
       if (i + 1 < lines.length && !lines[i + 1].startsWith('#')) {
-        segments.push({
+        const seg = {
           url: resolveUrl(baseUrl, lines[i + 1]),
           byteRange: currentByteRange,
-        });
+          duration: segDuration,
+        };
+        groups[currentGroupIndex].segments.push(seg);
+        groups[currentGroupIndex].totalDuration += segDuration;
         currentByteRange = undefined;
       }
     }
   }
 
-  return { segments, initSegment, duration };
+  let finalSegments: Array<{ url: string; byteRange?: string }> = [];
+  let finalDuration = duration;
+
+  if (blockAd && groups.length > 1) {
+    // Filter out ad groups: usually ad groups are very short compared to the main video.
+    // Find the maximum duration among groups to identify the main video scale.
+    const maxDuration = Math.max(...groups.map((g) => g.totalDuration));
+    finalSegments = [];
+    finalDuration = 0;
+    for (const group of groups) {
+      // If a group is less than 90 seconds and significantly smaller than the main video, it's likely an ad.
+      if (
+        group.totalDuration < 150 &&
+        group.totalDuration < maxDuration * 0.5
+      ) {
+        continue;
+      }
+      finalSegments.push(
+        ...group.segments.map((s) => ({ url: s.url, byteRange: s.byteRange }))
+      );
+      finalDuration += group.totalDuration;
+    }
+    // Fallback if we accidentally filtered everything
+    if (finalSegments.length === 0) {
+      finalSegments = groups
+        .flatMap((g) => g.segments)
+        .map((s) => ({ url: s.url, byteRange: s.byteRange }));
+      finalDuration = duration;
+    }
+  } else {
+    finalSegments = groups
+      .flatMap((g) => g.segments)
+      .map((s) => ({ url: s.url, byteRange: s.byteRange }));
+  }
+
+  return { segments: finalSegments, initSegment, duration: finalDuration };
 }
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const videoUrl = searchParams.get('url');
+  const blockAd = searchParams.get('blockAd') === 'true';
 
   if (!videoUrl) {
     return NextResponse.json(
@@ -134,10 +187,10 @@ export async function GET(request: NextRequest) {
       }
 
       const mediaText = await mediaResponse.text();
-      return NextResponse.json(parsePlaylist(mediaText, mediaUrl));
+      return NextResponse.json(parsePlaylist(mediaText, mediaUrl, blockAd));
     }
 
-    return NextResponse.json(parsePlaylist(text, videoUrl));
+    return NextResponse.json(parsePlaylist(text, videoUrl, blockAd));
   } catch (error) {
     return NextResponse.json(
       {

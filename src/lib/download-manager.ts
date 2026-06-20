@@ -69,6 +69,7 @@ export interface DownloadOptions {
   videoUrl: string;
   title: string;
   episode: number;
+  blockAd?: boolean;
   onProgress?: (progress: DownloadProgress) => void;
   onError?: (error: string) => void;
   onComplete?: () => void;
@@ -91,8 +92,15 @@ export class VideoDownloadManager {
   }
 
   async download(options: DownloadOptions): Promise<void> {
-    const { videoUrl, title, episode, onProgress, onError, onComplete } =
-      options;
+    const {
+      videoUrl,
+      title,
+      episode,
+      blockAd,
+      onProgress,
+      onError,
+      onComplete,
+    } = options;
 
     this._state = 'preparing';
     this.abortController = new AbortController();
@@ -100,7 +108,7 @@ export class VideoDownloadManager {
 
     const manifestUrl = `/api/download/manifest?url=${encodeURIComponent(
       videoUrl
-    )}`;
+    )}${blockAd ? '&blockAd=true' : ''}`;
 
     let manifestResponse: Response;
     try {
